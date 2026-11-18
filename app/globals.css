@@ -1,0 +1,371 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #ffffff;
+    --foreground: #171717;
+    --border: #e5e5e5;
+
+    /* Themed surface / ink tokens. Light values are unchanged from before. */
+    --surface: #ffffff;
+    --surface-muted: #f7f7fb;
+    --surface-sunken: #f1f0f7;
+    --line: #eeedf3;
+    --ink: #111827;
+    --ink-muted: #374151;
+    --ink-subtle: #6b7280;
+    /* Fill colour for the primary action (Create Post). Near-black in light
+       mode; in dark mode it inverts to a light fill so it still reads as the
+       strongest button on the page. */
+    --brand-black: #111827;
+    --brand-black-hover: #1f2937;
+    /* Tint used for ACTIVE nav items, badge pills and avatar initials.
+       Pale purple on white. */
+    --brand-light: #ede9fe;
+  }
+
+  /* Inversion: whites become near-black, near-black becomes off-white. */
+  .dark {
+    --background: #121218;
+    --foreground: #f4f4f8;
+    --border: #2a2a36;
+
+    --surface: #1a1a22;
+    --surface-muted: #121218;
+    --surface-sunken: #24242e;
+    --line: #2f2f3b;
+    --ink: #f4f4f8;
+    --ink-muted: #c3c3d1;
+    --ink-subtle: #9a9aab;
+    /* Inverted: a white-ish fill with dark text is the strongest button in
+       dark mode, matching how --ink inverts. */
+    --brand-black: #f4f4f8;
+    --brand-black-hover: #ffffff;
+    /* DARK OVERRIDE - this is the missing piece. Tailwind's `brand-light` is
+       a fixed #EDE9FE with no dark variant, so every active nav item, badge
+       and avatar fell back to a PALE box with near-white text/icons on a dark
+       page. In dark mode the tint becomes a dark surface instead, so the box
+       reads as a subtle fill and its contents stay legible. */
+    --brand-light: #24242e;
+  }
+
+  .dark body {
+    background-color: var(--background);
+    color: var(--ink);
+  }
+
+  body {
+    @apply text-near-black font-dm-sans antialiased;
+  }
+
+  /* Typography */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-dm-sans font-semibold tracking-tight;
+  }
+
+  h1 {
+    @apply text-4xl md:text-5xl lg:text-6xl;
+  }
+
+  h2 {
+    @apply text-3xl md:text-4xl;
+  }
+
+  h3 {
+    @apply text-2xl md:text-3xl;
+  }
+
+  h4 {
+    @apply text-xl md:text-2xl;
+  }
+}
+
+@layer components {
+  /* Font families */
+  .font-dm-sans {
+    font-family: var(--font-dm-sans), sans-serif;
+  }
+
+  .font-dm-mono {
+    font-family: var(--font-dm-mono), monospace;
+  }
+
+  /* Button styles */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 bg-brand text-white px-5 py-2.5 rounded-xl font-semibold text-[14px] transition-all;
+    box-shadow: 0 4px 12px rgba(91, 61, 245, 0.2);
+  }
+
+  .btn-primary:hover {
+    @apply bg-brand-dark;
+    box-shadow: 0 6px 18px rgba(91, 61, 245, 0.28);
+  }
+
+  /* text-ink, NOT text-brand: brand purple on a dark surface is unreadable,
+     and the purple-text sweep elsewhere in the app already moved to ink. The
+     fill stays brand-light, which has its own dark override (#24242e). */
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 bg-brand-light text-ink px-5 py-2.5 rounded-xl font-semibold text-[14px] hover:bg-brand/15 transition-colors;
+  }
+
+  /* Card styles */
+  .card {
+    background-color: var(--surface);
+    border-radius: 1.25rem;
+    border: 1px solid var(--line);
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04), 0 4px 16px rgba(17, 24, 39, 0.04);
+  }
+
+  /* Social feed post */
+  .feed-post {
+    background-color: var(--surface);
+    border-radius: 1.25rem;
+      padding: 1.25rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04), 0 4px 16px rgba(17, 24, 39, 0.04);
+  }
+
+  .feed-actions {
+    @apply flex items-center gap-1 mt-4 pt-3 border-t border-line;
+  }
+
+  .feed-action {
+    @apply inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[14px] font-medium text-gray-500 transition-colors;
+  }
+
+  .feed-action:hover {
+    @apply bg-surface-sunken text-brand;
+  }
+
+  .feed-action-liked {
+    @apply text-rose-600;
+  }
+
+  .feed-action-liked:hover {
+    @apply bg-rose-50 text-rose-600;
+  }
+
+  /* Availability status */
+  .status-open {
+    @apply inline-flex items-center gap-1.5 text-sm font-medium;
+  }
+
+  .status-open::before {
+    content: '';
+    @apply w-2.5 h-2.5 rounded-full bg-green-500 inline-block;
+  }
+}
+
+/* Gradient card for discovery panels */
+.card-gradient {
+  /* Starts on the brand indigo (same value as the logo) and lifts toward the
+     purple token. It used to hardcode #6D4AFF -> #A855F7, a DIFFERENT purple
+     from the logo, which is why these cards read as a separate colour. */
+  background: linear-gradient(135deg, #5B3DF5 0%, #8B5CF6 100%);
+  color: #ffffff;
+  border-radius: 1.25rem;
+  box-shadow: 0 8px 24px rgba(91, 61, 245, 0.24);
+}
+
+.card-gradient:hover {
+  box-shadow: 0 12px 32px rgba(91, 61, 245, 0.3);
+}
+
+/* Cards - unlayered so they are never tree-shaken.
+   These use the theme tokens, NOT literal hex. There used to be a second,
+   unlayered copy with #ffffff / #EEEDF3 hardcoded; that copy won and kept
+   cards white in dark mode. Do not reintroduce literal colours here. */
+.card {
+  background-color: var(--surface);
+  border-radius: 1.25rem;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04), 0 4px 16px rgba(17, 24, 39, 0.04);
+}
+
+.feed-post {
+  background-color: var(--surface);
+  border-radius: 1.25rem;
+  border: 1px solid var(--line);
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04), 0 4px 16px rgba(17, 24, 39, 0.04);
+}
+
+/* Page background — unlayered so it is never tree-shaken */
+body {
+  background-color: #ffffff;
+}
+
+/* Card tints — flattened so every card reads as a clean white surface */
+.tint-0 { background-color: #ffffff; }
+.tint-1 { background-color: #ffffff; }
+.tint-2 { background-color: #ffffff; }
+.tint-3 { background-color: #ffffff; }
+.tint-4 { background-color: #ffffff; }
+
+/* Sticky page header styled like the composer card */
+.page-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04), 0 4px 16px rgba(17, 24, 39, 0.04);
+  padding: 0.875rem 1.125rem;
+  margin-bottom: 1rem;
+}
+
+/* Transparent scrollbars for scrollable columns */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.18) transparent;
+}
+
+.scroll-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scroll-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scroll-thin::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.18);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.scroll-thin::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+.scroll-hidden {
+  scrollbar-width: none;
+}
+
+.scroll-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+/* ==================================================================
+   DARK MODE - must stay at the END of this file, outside @layer.
+
+   These rules fight Tailwind's own utilities (.bg-white etc). Anything
+   placed earlier in the file loses the cascade, which is why the first
+   attempt left cards white even with .dark applied correctly.
+   html.dark (0,1,1) also out-specifies a bare .bg-white (0,1,0).
+   ================================================================== */
+
+html.dark body {
+  background-color: #121218;
+  color: #f4f4f8;
+}
+
+/* Post images get a soft grey outline in dark mode so they do not float
+   borderless on a dark card. Light mode keeps no outline. */
+html.dark .post-image {
+  outline: 1px solid #3a3a47;
+  outline-offset: -1px;
+}
+
+html.dark .bg-white,
+html.dark .tint-0,
+html.dark .tint-1,
+html.dark .tint-2,
+html.dark .tint-3,
+html.dark .tint-4 {
+  background-color: #1a1a22;
+}
+
+html.dark .bg-gray-50,
+html.dark .bg-gray-100 {
+  background-color: #24242e;
+}
+
+html.dark .bg-gray-200 {
+  background-color: #33333f;
+}
+
+/* Inline skeletons and avatar placeholders use bg-gray-200 directly rather
+   than the Skeleton primitive. This keeps them from glowing in dark mode. */
+html.dark .animate-pulse.bg-gray-200 {
+  background-color: #2c2c38;
+}
+
+html.dark .hover\:bg-gray-50:hover,
+html.dark .hover\:bg-gray-100:hover {
+  background-color: #2c2c38;
+}
+
+html.dark .border-\[\#e5e5e5\],
+html.dark .border-\[\#efefef\] {
+  border-color: #2f2f3b;
+}
+
+html.dark .text-near-black {
+  color: #f4f4f8;
+}
+
+html.dark .text-gray-600,
+html.dark .text-gray-700 {
+  color: #c3c3d1;
+}
+
+html.dark .text-gray-400,
+html.dark .text-gray-500 {
+  color: #9a9aab;
+}
+
+html.dark input,
+html.dark textarea,
+html.dark select {
+  background-color: #24242e;
+  color: #f4f4f8;
+  border-color: #2f2f3b;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #9a9aab;
+}
+
+/* Promo-card CTA pills (Browse Jobs / Boost Visibility).
+   In dark mode these sit on a dark surface, so brand-purple text is
+   unreadable. Text goes white at rest and back to brand on hover.
+   The background is NOT touched - it is already dark via the .bg-white
+   override above. Light mode is unaffected. */
+html.dark .rounded-full.bg-white.text-brand {
+  color: #ffffff;
+}
+
+html.dark .rounded-full.bg-white.text-brand:hover {
+  color: #5b3df5;
+}
+
+/* Number inputs - native spinner REMOVED, everywhere, both themes.
+
+   The stepper is UA chrome: it cannot be coloured, it ignores the field's
+   background, and on a dark field the browser paints its own light track that
+   then had to be inverted with a filter - which produced a dark box that only
+   appeared on hover. No CSS makes that widget "just the arrows".
+
+   The arrows now come from components/ui/NumberInput.tsx, which draws SVG
+   chevrons in `text-ink` so they follow the theme for free. Do NOT re-enable
+   the native spinner; it will double up with the custom one. */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}

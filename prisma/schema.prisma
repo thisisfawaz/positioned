@@ -1,0 +1,604 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                  String              @id @default(uuid())
+  email               String              @unique
+  username            String?             @unique
+  passwordHash        String?
+  name                String
+  role                UserRole
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  
+  professionalProfile ProfessionalProfile?
+  recruiterProfile    RecruiterProfile?
+  savedWork           SavedWork[]
+  savedAsRecruiter    SavedProfessional[] @relation("recruiterSavedProfessionals")
+  savedAsProfessional SavedProfessional[] @relation("professionalSavedProfessionals")
+  workViews           WorkView[]
+  boosts              Boost[]
+  payments            Payment[]
+  admin               Admin?
+  likes               Like[]
+  sentContacts        ContactRequest[] @relation("sentContacts")
+  receivedContacts    ContactRequest[] @relation("receivedContacts")
+  recruitments        Recruitment[]
+  recruitmentLikes    RecruitmentLike[]
+  savedRecruitments   SavedRecruitment[]
+  recruitmentViews    RecruitmentView[]
+  following           Follow[]            @relation("follower")
+  followers           Follow[]            @relation("following")
+  sentDocumentRequests     DocumentRequest[] @relation("sentDocumentRequests")
+  receivedDocumentRequests DocumentRequest[] @relation("receivedDocumentRequests")
+  boostImpressions    BoostImpression[]
+  settings            UserSettings?
+  /// Wallet balance. $1 buys 1 boost; a boost buys one day of visibility,
+  /// except in the discounted 14- and 30-day bundles. Spending deducts from
+  /// here and creates a Boost row with the resulting window.
+  boostCredits        Int                 @default(0)
+}
+
+model UserSettings {
+  id                     String   @id @default(uuid())
+  userId                 String   @unique
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notifyMessages         Boolean  @default(true)
+  notifyList             Boolean  @default(true)
+  notifyRoles            Boolean  @default(true)
+  profileVisible         Boolean  @default(true)
+  allowRecruiterMessages Boolean  @default(true)
+  themeMode              String   @default("light")
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
+
+/// DEPRECATED - recruiter posts become WorkPost with desiredResponse APPLY/CV/
+/// PORTFOLIO/CV_AND_PORTFOLIO. This model and its satellites are removed in
+/// the retirement phase. Nothing new should write to it.
+model Recruitment {
+  id             String    @id @default(uuid())
+  recruiterId    String
+  recruiter      User      @relation(fields: [recruiterId], references: [id], onDelete: Cascade)
+  title          String
+  organization   String?
+  location       String?
+  country        String?
+  employmentType String?
+  description    String?
+  responsibilities String?
+  requirements   String?
+  salaryRange    String?
+  salaryHidden   Boolean   @default(false)
+  applyMethod    String    @default("LINK")
+  applyInstructions String?
+  applyUrl       String?
+  /// Media: an image OR a YouTube link, never both. See supabase/031.
+  imageUrl       String?
+  videoUrl       String?
+  mediaType      String?
+  closingDate    DateTime?
+  status         String    @default("OPEN")
+  views          Int       @default(0)
+  likes          Int       @default(0)
+  shares         Int       @default(0)
+  saves          Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  likesList      RecruitmentLike[]
+  savesList      SavedRecruitment[]
+  viewsList      RecruitmentView[]
+
+  @@index([recruiterId])
+  @@index([createdAt])
+}
+
+model Follow {
+  id          String   @id @default(uuid())
+  followerId  String
+  follower    User     @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  followingId String
+  following   User     @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([followerId, followingId])
+  @@index([followingId])
+}
+
+model RecruitmentView {
+  id            String      @id @default(uuid())
+  recruitmentId String
+  recruitment   Recruitment @relation(fields: [recruitmentId], references: [id], onDelete: Cascade)
+  viewerId      String
+  viewer        User        @relation(fields: [viewerId], references: [id], onDelete: Cascade)
+  viewedAt      DateTime    @default(now())
+
+  @@unique([recruitmentId, viewerId])
+  @@index([recruitmentId])
+}
+
+model SavedRecruitment {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recruitmentId String
+  recruitment   Recruitment @relation(fields: [recruitmentId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+
+  @@unique([userId, recruitmentId])
+  @@index([recruitmentId])
+}
+
+model RecruitmentLike {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recruitmentId String
+  recruitment   Recruitment @relation(fields: [recruitmentId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+
+  @@unique([userId, recruitmentId])
+  @@index([recruitmentId])
+}
+
+enum UserRole {
+  PROFESSIONAL
+  RECRUITER
+  ADMIN
+}
+
+model ProfessionalProfile {
+  id              String        @id @default(uuid())
+  userId          String        @unique
+  user            User          @relation(fields: [userId], references: [id])
+  title           String?
+  bio             String?
+  location        String?
+  country         String?
+  profilePhoto    String?
+  availability    AvailabilityStatus @default(OPEN_TO_WORK)
+  opportunityPreferences String?
+  linkedinUrl     String?
+  twitterUrl      String?
+  githubUrl       String?
+  websiteUrl      String?
+  contactEmail    String?
+  featuredWorkIds String[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  skills          ProfessionalSkill[]
+  experiences     Experience[]
+  workPosts       WorkPost[]
+}
+
+enum AvailabilityStatus {
+  OPEN_TO_WORK
+  OPEN_TO_CONTRACT
+  OPEN_TO_FREELANCE
+  OPEN_TO_FULL_TIME
+  OPEN_TO_OPPORTUNITIES
+  NOT_AVAILABLE
+}
+
+model Skill {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  createdAt   DateTime @default(now())
+  
+  professionals ProfessionalSkill[]
+}
+
+model ProfessionalSkill {
+  id              String   @id @default(uuid())
+  professionalId  String
+  professional    ProfessionalProfile @relation(fields: [professionalId], references: [id])
+  skillId         String
+  skill           Skill   @relation(fields: [skillId], references: [id])
+  
+  @@unique([professionalId, skillId])
+}
+
+/// Work history. Shared by both roles - the fields are identical, so one
+/// table and one form serve professionals and recruiters alike. Exactly one
+/// of professionalId / recruiterProfileId is set.
+model Experience {
+  id                 String   @id @default(uuid())
+  professionalId     String?
+  professional       ProfessionalProfile? @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  recruiterProfileId String?
+  recruiterProfile   RecruiterProfile? @relation(fields: [recruiterProfileId], references: [id], onDelete: Cascade)
+  title              String
+  company            String
+  startDate          DateTime
+  endDate            DateTime?
+  current            Boolean  @default(false)
+  description        String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([professionalId])
+  @@index([recruiterProfileId])
+}
+
+model WorkPost {
+  id                  String          @id @default(uuid())
+  /// Owner is EITHER a professional or a recruiter - exactly one is set,
+  /// mirroring the Experience model. This replaces the old split between
+  /// WorkPost (professional) and Recruitment (recruiter).
+  professionalId      String?
+  professional        ProfessionalProfile? @relation(fields: [professionalId], references: [id])
+  recruiterProfileId  String?
+  recruiterProfile    RecruiterProfile? @relation(fields: [recruiterProfileId], references: [id])
+  /// Legacy template. Deprecated - free posting replaces it. Nullable so new
+  /// posts do not need one; old rows keep their value until deleted.
+  template            WorkTemplate?
+  /// What the author wants back. Options depend on the author's side:
+  /// professional -> MESSAGE | CV | PORTFOLIO | CV_AND_PORTFOLIO
+  /// recruiter    -> APPLY | CV | PORTFOLIO | CV_AND_PORTFOLIO
+  desiredResponse     ResponseType    @default(MESSAGE)
+  /// Media is an image upload OR a YouTube embed link, never both.
+  mediaType           PostMediaType?
+  videoUrl            String?
+  /// Where an APPLY post sends applicants. Required for APPLY, null otherwise.
+  /// Apply is neither a document handover nor a message - see 030.
+  applyUrl            String?
+  title               String
+  purpose             String?
+  challenge           String?
+  goal                String?
+  approach            String?
+  solution            String?
+  contribution        String?
+  result              String?
+  metrics             String?
+  situation           String?
+  action              String?
+  /// Free-form body for free posting. The structured fields below stay and
+  /// remain optional - a templated post fills those, a free post fills this.
+  caption             String?
+  skills              String[]
+  links               String[]
+  featured            Boolean         @default(false)
+  boosted             Boolean         @default(false)
+  boostExpiresAt      DateTime?
+  status              WorkStatus      @default(PUBLISHED)
+  views               Int             @default(0)
+  recruiterViews      Int             @default(0)
+  saves               Int             @default(0)
+  likes               Int             @default(0)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  
+  savedWork           SavedWork[]
+  likesList           Like[]
+  workViews           WorkView[]
+  mediaAssets         MediaAsset[]
+  documentRequests    DocumentRequest[]
+  boostPosts          BoostPost[]
+  boostImpressions    BoostImpression[]
+}
+
+/// DEPRECATED - free posting replaces templates. Kept only so existing rows
+/// still validate until the old posts are deleted.
+enum WorkTemplate {
+  PROJECT_SHOWCASE
+  CASE_STUDY
+  ACHIEVEMENT
+  WORK_SAMPLE
+}
+
+/// What the author wants a viewer to do. One canonical set; the LABEL rendered
+/// depends on the author side and the viewer's role.
+///   MESSAGE        professional-side only ("Message")
+///   APPLY          recruiter-side only ("Apply")
+///   CV             "Request CV" to a recruiter / "Submit CV" to a professional
+///   PORTFOLIO      same pattern
+///   CV_AND_PORTFOLIO  one combined ask - do both
+enum ResponseType {
+  MESSAGE
+  CV
+  PORTFOLIO
+  CV_AND_PORTFOLIO
+  APPLY
+}
+
+enum PostMediaType {
+  IMAGE
+  YOUTUBE
+}
+
+enum WorkStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+  REJECTED
+}
+
+model MediaAsset {
+  id              String         @id @default(uuid())
+  workPostId      String
+  workPost        WorkPost       @relation(fields: [workPostId], references: [id])
+  provider        StorageProvider
+  providerAssetId String
+  type            MediaType
+  thumbnail       String?
+  preview         String?
+  metadata        Json?
+  createdAt       DateTime       @default(now())
+}
+
+enum StorageProvider {
+  GOOGLE_DRIVE
+  DROPBOX
+  ONEDRIVE
+  S3
+  /// Local disk under public/uploads. FOR DEVELOPMENT ONLY - public/ is baked
+  /// at build time and does not accept writes on Vercel.
+  LOCAL
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  PREVIEW
+}
+
+/// DEPRECATED - being folded into WorkPost. Left intact during the phased
+/// migration so existing pages keep working; removed in the retirement phase.
+model RecruiterProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
+  workPosts       WorkPost[]
+  organization    String?
+  role            String?
+  bio             String?
+  location        String?
+  hiringInterests String?
+  recruitingStatus RecruitingStatus @default(CURRENTLY_RECRUITING)
+  isVerified      Boolean  @default(false)
+  experiences     Experience[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+enum RecruitingStatus {
+  CURRENTLY_RECRUITING
+  NOT_RECRUITING
+}
+
+model SavedWork {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  workPostId  String
+  workPost    WorkPost @relation(fields: [workPostId], references: [id])
+  createdAt   DateTime @default(now())
+  
+  @@unique([userId, workPostId])
+}
+
+model Like {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workPostId String
+  workPost   WorkPost @relation(fields: [workPostId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, workPostId])
+  @@index([workPostId])
+}
+
+model SavedProfessional {
+  id              String   @id @default(uuid())
+  recruiterId     String
+  recruiter       User     @relation("recruiterSavedProfessionals", fields: [recruiterId], references: [id])
+  professionalId  String
+  professional    User     @relation("professionalSavedProfessionals", fields: [professionalId], references: [id])
+  createdAt       DateTime @default(now())
+  
+  @@unique([recruiterId, professionalId])
+}
+
+model WorkView {
+  id              String   @id @default(uuid())
+  workPostId      String
+  workPost        WorkPost @relation(fields: [workPostId], references: [id])
+  viewerId        String?
+  viewer          User?    @relation(fields: [viewerId], references: [id])
+  viewerRole      UserRole?
+  viewedAt        DateTime @default(now())
+}
+
+/// One boost purchase. Covers MANY posts and spans a window of days.
+/// A user may hold only ONE active boost at a time - enforced in application
+/// code, not by a database constraint, since "active" is time-dependent.
+model Boost {
+  id          String      @id @default(uuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Currency amount paid, kept for the payment record.
+  amount      Float
+  currency    String
+  /// BOOSTS spent on this run.
+  creditsSpent Int        @default(0)
+  /// How much share of the boosted slot this purchase commands. Equal to the
+  /// credits spent. Assignment picks proportionally to weight, so spending
+  /// more boosts in the same window buys a bigger share of it.
+  weight      Int         @default(1)
+  /// The WINDOW this boost runs over. It does NOT scale the price: cost is
+  /// creditsSpent, and days only spread that budget out (thinner per day over
+  /// a longer window). A floor of 1 boost per day is enforced in application
+  /// code, not here.
+  days        Int
+  /// ISO 3166-1 alpha-2 codes this boost is restricted to (e.g. ['GB','NG']).
+  /// EMPTY = everywhere. Resolved from the viewer's IP at request time.
+  targetCountries String[] @default([])
+  startsAt    DateTime
+  expiresAt   DateTime
+  status      BoostStatus @default(ACTIVE)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  posts        BoostPost[]
+  impressions  BoostImpression[]
+  payments     Payment[]
+
+  @@index([userId, status])
+}
+
+enum BoostStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+/// One recorded impression of a boosted item.
+/// Written when a boosted post or profile is actually rendered for a viewer.
+/// This is what makes "times you were shown" measurable at all - assignment is
+/// computed per viewer per hour and is otherwise thrown away.
+model BoostImpression {
+  id          String       @id @default(uuid())
+  boostId     String
+  boost       Boost        @relation(fields: [boostId], references: [id], onDelete: Cascade)
+  /// Null for EXPLORE impressions - those promote the profile, not a post.
+  workPostId  String?
+  workPost    WorkPost?    @relation(fields: [workPostId], references: [id], onDelete: Cascade)
+  viewerId    String
+  viewer      User         @relation(fields: [viewerId], references: [id], onDelete: Cascade)
+  viewerRole  UserRole?
+  surface     BoostSurface
+  shownAt     DateTime     @default(now())
+
+  @@index([boostId, shownAt])
+  @@index([workPostId])
+}
+
+enum BoostSurface {
+  FEED
+  EXPLORE
+}
+
+/// A post selected as part of a boost.
+model BoostPost {
+  id          String   @id @default(uuid())
+  boostId     String
+  boost       Boost    @relation(fields: [boostId], references: [id], onDelete: Cascade)
+  workPostId  String
+  workPost    WorkPost @relation(fields: [workPostId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([boostId, workPostId])
+}
+
+model Payment {
+  id                    String   @id @default(uuid())
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id])
+  boostId               String?
+  boost                 Boost?       @relation(fields: [boostId], references: [id])
+  amount                Float
+  currency              String
+  provider              PaymentProvider
+  providerTransactionId String?
+  status                PaymentStatus @default(PENDING)
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+}
+
+enum PaymentProvider {
+  STRIPE
+  PAYSTACK
+  FLUTTERWAVE
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESSFUL
+  FAILED
+  REFUNDED
+}
+model Admin {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id])
+  permissions String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ContactRequest {
+  id                String   @id @default(uuid())
+  fromUserId        String
+  fromUser          User     @relation("sentContacts", fields: [fromUserId], references: [id])
+  toUserId          String
+  toUser            User     @relation("receivedContacts", fields: [toUserId], references: [id])
+  workPostId        String?
+  subject           String
+  message           String
+  status            ContactStatus @default(PENDING)
+  hiddenForUserIds  String[] @default([])
+  fromUserLastReadAt DateTime?
+  toUserLastReadAt   DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  readAt            DateTime?
+  replies           ContactReply[]
+}
+
+enum ContactStatus {
+  PENDING
+  READ
+  RESPONDED
+  ARCHIVED
+}
+
+/// A request for a CV and/or portfolio, made by clicking a post's CTA.
+///
+/// Links only - no files are stored. One row per (post, requester); the app
+/// reuses an existing row rather than creating a duplicate. The author fills
+/// cvUrl / portfolioUrl, which flips status to FULFILLED.
+model DocumentRequest {
+  id           String                @id @default(uuid())
+  postId       String
+  post         WorkPost              @relation(fields: [postId], references: [id], onDelete: Cascade)
+  requesterId  String?
+  requester    User?                 @relation("sentDocumentRequests", fields: [requesterId], references: [id])
+  ownerId      String
+  owner        User                  @relation("receivedDocumentRequests", fields: [ownerId], references: [id], onDelete: Cascade)
+  response     ResponseType
+  status       DocumentRequestStatus @default(PENDING)
+  cvUrl        String?
+  portfolioUrl String?
+  createdAt    DateTime              @default(now())
+  fulfilledAt  DateTime?
+
+  @@unique([postId, requesterId])
+  @@index([ownerId, status])
+  @@index([requesterId])
+}
+
+enum DocumentRequestStatus {
+  PENDING
+  FULFILLED
+  DECLINED
+}
+
+model ContactReply {
+  id                String   @id @default(uuid())
+  contactRequestId  String
+  contactRequest    ContactRequest @relation(fields: [contactRequestId], references: [id], onDelete: Cascade)
+  fromUserId        String
+  body              String
+  createdAt         DateTime @default(now())
+}

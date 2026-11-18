@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.*
+
+# Next.js build output
+.next/
+out/
+build/
+dist/
+
+# Environment files - NEVER commit these.
+# .env.example is safe to commit if one is added later.
+.env
+.env.*
+!.env.example
+
+# Uploaded media. LOCAL provider writes here and Vercel cannot write to it
+# anyway - see prisma/schema.prisma StorageProvider.LOCAL.
+public/uploads/
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Misc
+.vercel
+*.pem
