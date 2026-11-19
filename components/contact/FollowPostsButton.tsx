@@ -54,7 +54,7 @@ export function FollowPostsButton({
           : 'bg-brand text-white hover:bg-brand-dark disabled:opacity-60'
       }`}
     >
-      {following ? 'On list' : 'Add to list'}
+      {following ? 'Unlist' : 'Add to list'}
     </button>
   )
 }

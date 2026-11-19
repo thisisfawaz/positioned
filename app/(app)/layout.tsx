@@ -20,7 +20,7 @@ export default async function AppLayout({
   const effectiveRole = role ?? 'PROFESSIONAL'
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#121218]">
+    <div className="min-h-screen bg-[var(--background)]">
       <MobileTopBar />
 
       {/* Two columns: nav rail + content. The right rail was removed. Pages

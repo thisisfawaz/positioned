@@ -17,7 +17,7 @@ import type { ResponseType } from '@prisma/client'
  *   none      -> the action button (Request CV / Submit CV).
  *   PENDING   -> a row exists but NO LINKS YET. Still asks for them; opens the
  *                form in a MODAL. Shows "Add your CV" rather than "Submitted".
- *   FULFILLED -> links exist. Links to /requests as "Submitted - view".
+ *   FULFILLED -> links exist. Links to /responses as "Submitted - view".
  *
  * The state is SERVER-DERIVED so a refresh cannot lose it - and, critically,
  * a refresh cannot upgrade an empty request into a submitted one.
@@ -56,7 +56,7 @@ export function RequestDocumentsCta({
   if (isFulfilled) {
     return (
       <Link
-        href="/requests"
+        href="/responses"
         className="inline-flex items-center gap-1.5 rounded-full bg-brand-light px-3.5 py-1.5 text-[13px] font-semibold text-ink transition-colors hover:bg-brand hover:text-white"
       >
         Submitted - view

@@ -185,7 +185,7 @@ export function TopNav({ role, userName }: { role: Role; userName?: string }) {
                       key={item.name}
                       href={item.href}
                       onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2 text-[14px] text-ink-muted transition-colors hover:bg-surface-sunken hover:text-ink"
+                      className="flex items-center gap-3 px-4 py-2 text-[14px] text-ink-muted transition-colors hover:bg-[#242424] hover:text-ink"
                     >
                       <Icon className="h-4 w-4 flex-shrink-0" />
                       {item.name}
@@ -195,7 +195,7 @@ export function TopNav({ role, userName }: { role: Role; userName?: string }) {
                 <button
                   onClick={handleSignOut}
                   disabled={signingOut}
-                  className="mt-1 w-full border-t border-line px-4 py-2 text-left text-[14px] text-rose-600 transition-colors hover:bg-rose-50 disabled:opacity-60"
+                  className="mt-1 w-full border-t border-line px-4 py-2 text-left text-[14px] text-rose-600 transition-colors hover:bg-[#242424] disabled:opacity-60"
                 >
                   {signingOut ? 'Signing out...' : 'Sign out'}
                 </button>

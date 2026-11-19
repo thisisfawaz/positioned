@@ -52,7 +52,7 @@ export function FulfilForm({
           Shared. The requester can now see these links.
         </p>
         <Link
-          href="/requests"
+          href="/responses"
           className="mt-2 inline-block text-sm font-semibold text-ink hover:underline"
         >
           View all requests

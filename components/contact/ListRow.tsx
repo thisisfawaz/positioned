@@ -25,7 +25,7 @@ export function ListRow({
 
   return (
     <li>
-      <div className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3 transition-colors hover:bg-surface-sunken">
+      <div className="flex items-center gap-3 rounded-2xl bg-white py-3 pl-[5px] pr-4 transition-colors hover:bg-surface-sunken">
         <Link href={`/${handle}`} className="flex min-w-0 flex-1 items-center gap-3">
           <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-light text-[15px] font-semibold text-ink">
             {photo ? (

@@ -30,7 +30,7 @@ export default async function VisibilityPage() {
       <div className="mb-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-[26px] font-bold tracking-tight text-ink">Visibility</h1>
+            <h1 className="text-[20px] font-bold tracking-tight text-ink sm:text-[26px]">Visibility</h1>
             <p className="mt-1 text-[14px] text-ink-muted">
               How much attention your work is getting.
             </p>

@@ -62,7 +62,7 @@ export function MessagesList({ onOpen }: { onOpen: (id: string) => void }) {
             <button
               type="button"
               onClick={() => onOpen(c.id)}
-              className="block w-full px-4 py-3 text-left"
+              className="block w-full py-3 pl-[5px] pr-4 text-left"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">

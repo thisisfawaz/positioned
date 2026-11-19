@@ -29,7 +29,7 @@ export const NAV_ITEMS: NavItem[] = [
   { name: 'Messages', href: '/messages', icon: ChatIcon, badge: 'messages' },
   { name: 'Saves', href: '/profile/saved-work', icon: BookmarkIcon },
   { name: 'Notifications', href: '/profile/notifications', icon: BellIcon, badge: 'notifications' },
-  { name: 'Requests', href: '/requests', icon: FolderIcon },
+  { name: 'Responses', href: '/responses', icon: FolderIcon },
   { name: 'Boost Visibility', href: '/profile/visibility', icon: EyeIcon },
   { name: 'Settings', href: '/settings', icon: SettingsIcon },
 ]

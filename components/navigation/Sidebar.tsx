@@ -72,7 +72,7 @@ export function Sidebar({ role }: { role: string }) {
               {/* Label appears only on hover, as a tooltip to the right. */}
               <span
                 role="tooltip"
-                className="pointer-events-none absolute left-full z-50 ml-2 whitespace-nowrap rounded-lg bg-[#1f1f27] px-2.5 py-1.5 text-[12px] font-medium text-[#ffffff] opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100"
+                className="pointer-events-none absolute left-full z-50 ml-2 whitespace-nowrap rounded-lg border border-line bg-brand-light px-2.5 py-1.5 text-[12px] font-medium text-ink opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100"
               >
                 {item.name}
               </span>

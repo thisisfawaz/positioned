@@ -122,7 +122,7 @@ export default function SettingsPage() {
   return (
     <div className="w-full px-3 pb-6 pt-2 sm:px-4 lg:pt-6">
       <div className="mb-4">
-        <h1 className="text-[26px] font-bold tracking-tight text-ink">Settings</h1>
+        <h1 className="text-[20px] font-bold tracking-tight text-ink sm:text-[26px]">Settings</h1>
         <p className="mt-1 text-[14px] text-ink-muted">Account and app preferences.</p>
       </div>
 

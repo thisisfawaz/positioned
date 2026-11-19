@@ -128,6 +128,7 @@ export function WorkCard({
   // different from a profile's tile, which opens /[username]/reels - sharing
   // hands someone the global feed, not one person's reel.
   const shareHref = `/feed?post=${post.id}`
+  const profileHref = `/${author?.username || author?.id || ''}`
   const href = `/${author?.username || author?.id || ''}/work/${post.id}`
 
   // Recruiter-owned posts read as RECRUITING rather than work: a pill marks
@@ -353,20 +354,27 @@ export function WorkCard({
       }}
     >
       <div className="flex-shrink-0">
-        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-white/20 text-[14px] font-bold text-white backdrop-blur">
+        <Link
+          href={profileHref}
+          aria-label={`${name}'s profile`}
+          className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-white/20 text-[14px] font-bold text-white backdrop-blur transition-opacity hover:opacity-85"
+        >
           {authorPhoto ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={authorPhoto} alt={name} className="h-full w-full object-cover" />
           ) : (
             initialsOf(name)
           )}
-        </div>
+        </Link>
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="truncate text-[15px] font-semibold text-white">
+          <Link
+            href={profileHref}
+            className="truncate text-[15px] font-semibold text-white hover:underline"
+          >
             {name}
-          </span>
+          </Link>
           {isRecruiting && (
             <span className="flex-shrink-0 rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white backdrop-blur">
               Recruiting

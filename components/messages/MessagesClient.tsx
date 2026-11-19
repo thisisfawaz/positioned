@@ -33,7 +33,7 @@ export function MessagesClient() {
     <>
       <div className="w-full px-3 pb-6 pt-2 sm:px-4 lg:pt-6">
         <div className="mb-4">
-          <h1 className="text-[26px] font-bold tracking-tight text-ink">Messages</h1>
+          <h1 className="text-[20px] font-bold tracking-tight text-ink sm:text-[26px]">Messages</h1>
           <p className="mt-1 text-[14px] text-ink-muted">Your conversations.</p>
         </div>
 

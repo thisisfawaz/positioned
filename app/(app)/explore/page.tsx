@@ -55,7 +55,7 @@ export default function ExplorePage() {
       <div className="px-3 pt-2 sm:px-4 lg:pt-6">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-[26px] font-bold tracking-tight text-ink">Explore</h1>
+            <h1 className="text-[20px] font-bold tracking-tight text-ink sm:text-[26px]">Explore</h1>
             <p className="mt-1 text-[14px] text-ink-muted">
               Discover professionals and the work they&apos;re showcasing.
             </p>

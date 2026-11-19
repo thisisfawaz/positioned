@@ -83,7 +83,7 @@ export async function requestDocuments(
     select: { id: true },
   })
   if (existing) {
-    revalidatePath('/requests')
+    revalidatePath('/responses')
     return { ok: true, requestId: existing.id }
   }
 
@@ -118,7 +118,7 @@ export async function requestDocuments(
       },
       select: { id: true },
     })
-    revalidatePath('/requests')
+    revalidatePath('/responses')
     if (!postOwnerIsRecruiter) revalidatePath('/profile/notifications')
     return { ok: true, requestId: created.id, needsForm: postOwnerIsRecruiter }
   } catch (err) {
@@ -191,7 +191,7 @@ export async function fulfilDocumentRequest(
   }
 
   revalidatePath('/profile/notifications')
-  revalidatePath('/requests')
+  revalidatePath('/responses')
   revalidatePath(`/requests/${requestId}`)
   return { ok: true, requestId }
 }
