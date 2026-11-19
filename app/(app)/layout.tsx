@@ -28,6 +28,10 @@ export default async function AppLayout({
       <div className="flex w-full items-start">
         <Sidebar role={effectiveRole} />
 
+        {/* NO top padding. The bar is `fixed`, so it overlays the page; the
+            scrolled content runs underneath it and fills the area, which is what
+            was asked for. Adding `pt-*` here would reserve a permanent empty
+            strip at the top - the exact gap this replaces. */}
         <main className="min-w-0 flex-1 pb-20 lg:pb-0">
           {children}
         </main>

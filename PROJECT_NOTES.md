@@ -233,6 +233,15 @@ done, delete it here and record the outcome in the Change Log.
 
 ## Change Log
 
+### 2026-11-19 - Mobile top bar: hides on scroll down, and stops leaving a gap
+
+- USER: on mobile the top bar should disappear when scrolling down and come back when scrolling up.
+- The hide/reveal logic ALREADY EXISTED in `MobileTopBar` and was correct - but it listened on `window` and read `window.scrollY`. That never fires on the feed: the shell is `h-screen overflow-hidden` and only the MIDDLE COLUMN scrolls, so the window never moves. The bar could never hide there.
+- FIX: the listener moved to `document` with `capture: true`. Scroll events do NOT bubble, so a plain listener only ever hears the window; capture-phase hears EVERY scrolling element. The offset is now read from whichever container actually fired (`e.target.scrollTop`), falling back to `window.scrollY`.
+- SECOND FIX, reported right after: hiding a `sticky` bar with `-translate-y-full` slides it out but its BOX STAYS IN THE FLOW, leaving an empty strip - "you left it blank, that's poor UI". Correct. The bar is now `fixed inset-x-0 top-0`, so it leaves the flow and the content reclaims the space.
+- CONSEQUENCE of `fixed`: the bar overlays the page. `<main>` in `app/(app)/layout.tsx` gained `pt-14 lg:pt-0`. The `lg:pt-0` is required - the bar is `lg:hidden`, so that padding would be dead space on desktop. If the bar's height changes, these two numbers must change together.
+- Verified: `npx tsc --noEmit` CLEAN. NOT verified in a browser; the user confirmed the site is live and is checking mobile themselves.
+
 ### 2026-11-18 - Post media: 9:16 / 16:9 frame with fill-vs-contain
 
 - USER: when uploading an image, let the poster choose 9:16 or 16:9. If the image really is close to that shape it should FILL the frame (all four edges, accepting a tiny trim). If it is genuinely a different shape it must NOT be cropped - it keeps its own proportions.
