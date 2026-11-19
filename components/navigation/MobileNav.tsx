@@ -19,6 +19,7 @@ import {
 import { CreatePostTrigger } from '@/components/work/CreatePostTrigger'
 import { ProfileMenu } from '@/components/navigation/ProfileMenu'
 import { NAV_ITEMS } from '@/components/navigation/navItems'
+import { REEL_SCROLL_EVENT, type ReelScrollDetail } from '@/lib/client/reel-scroll'
 
 /**
  * Mobile chrome, from the reference's phone screens: a brand bar with actions
@@ -53,16 +54,28 @@ export function MobileTopBar() {
       lastY.current = y
     }
 
+    // The feed scrolls inside its own container, so it reports direction via
+    // this event rather than moving window.scrollY.
+    const onReelScroll = (e: Event) => {
+      const detail = (e as CustomEvent<ReelScrollDetail>).detail
+      setHidden(Boolean(detail?.hidden))
+    }
+
     window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    window.addEventListener(REEL_SCROLL_EVENT, onReelScroll as EventListener)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener(REEL_SCROLL_EVENT, onReelScroll as EventListener)
+    }
   }, [])
 
   return (
     <>
       <header
-        className={`sticky top-0 z-30 flex items-center justify-between border-b border-line bg-white px-4 py-3 transition-transform duration-200 lg:hidden ${
+        className={`fixed inset-x-0 top-0 z-30 flex items-center justify-between border-b border-line bg-white px-4 transition-transform duration-200 lg:hidden ${
           hidden ? '-translate-y-full' : 'translate-y-0'
         }`}
+        style={{ height: 'var(--topbar-h)' }}
       >
         <div className="flex items-center gap-2">
           <button
@@ -186,6 +199,19 @@ function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void })
 
 export function MobileBottomNav({ role }: { role: string; userName?: string }) {
   const pathname = usePathname()
+  // Slide the tab bar away while the user is scrolling through the reel, then
+  // bring it back on scroll-up or tap - same trigger as the top bar.
+  const [hidden, setHidden] = useState(false)
+
+  useEffect(() => {
+    const onReelScroll = (e: Event) => {
+      const detail = (e as CustomEvent<ReelScrollDetail>).detail
+      setHidden(Boolean(detail?.hidden))
+    }
+    window.addEventListener(REEL_SCROLL_EVENT, onReelScroll as EventListener)
+    return () =>
+      window.removeEventListener(REEL_SCROLL_EVENT, onReelScroll as EventListener)
+  }, [])
 
   const isActive = (href: string) =>
     pathname === href || pathname?.startsWith(`${href}/`)
@@ -196,7 +222,10 @@ export function MobileBottomNav({ role }: { role: string; userName?: string }) {
     }`
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-line bg-white pb-[env(safe-area-inset-bottom)] lg:hidden">
+    <nav
+      className={`fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-line bg-white pb-[env(safe-area-inset-bottom)] transition-transform duration-200 lg:hidden ${hidden ? 'translate-y-full' : 'translate-y-0'}`}
+      style={{ height: 'var(--bottombar-h)' }}
+    >
       <Link href="/feed" className={tabClass('/feed')}>
         <HomeIcon className="h-[21px] w-[21px]" />
         Home

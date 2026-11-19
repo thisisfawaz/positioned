@@ -24,6 +24,15 @@
     /* Tint used for ACTIVE nav items, badge pills and avatar initials.
        Pale purple on white. */
     --brand-light: #ede9fe;
+
+    /* Mobile chrome heights. These MUST match the fixed bars in
+       components/navigation/MobileNav.tsx: top bar = py-3*2 + h-9 button +
+       1px border = 61px. Bottom bar = h-16 (64px) + the device safe-area
+       inset so the last reel card never hides under the home indicator.
+       The layout, the bars, and ReelFeed all read these, so they can never
+       drift apart the way hard-coded -mt-14/-mb-16 did. */
+    --topbar-h: calc(60px + 1px);
+    --bottombar-h: calc(64px + env(safe-area-inset-bottom, 0px));
   }
 
   /* Inversion: whites become near-black, near-black becomes off-white. */

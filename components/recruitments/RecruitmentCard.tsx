@@ -12,6 +12,26 @@ import { relativeTime, initialsOf, compactCount } from '@/lib/client/social'
 import { FollowPostsButton } from '@/components/contact/FollowPostsButton'
 import { ApplyAction } from '@/components/recruitments/ApplyAction'
 
+/**
+ * Stored videoUrl is a bare embed URL (https://www.youtube.com/embed/ID).
+ * Turn it into a muted autoplay + loop embed. YouTube only autoplays when
+ * muted, and looping requires the video id repeated in `playlist`.
+ */
+function autoplayEmbedUrl(url: string): string {
+  const id = url.match(/embed\/([\w-]{11})/)?.[1]
+  const base = id ? `https://www.youtube.com/embed/${id}` : url.split('?')[0]
+  const params = new URLSearchParams({
+    autoplay: '1',
+    mute: '1',
+    playsinline: '1',
+    loop: '1',
+    modestbranding: '1',
+    rel: '0',
+  })
+  if (id) params.set('playlist', id)
+  return `${base}?${params.toString()}`
+}
+
 type Recruitment = {
   id: string
   title: string
@@ -176,7 +196,7 @@ export function RecruitmentCard({
           {r.mediaType === 'YOUTUBE' && r.videoUrl ? (
             <div className="mt-2 overflow-hidden rounded-xl bg-black">
               <iframe
-                src={r.videoUrl}
+                src={autoplayEmbedUrl(r.videoUrl)}
                 title={r.title}
                 className="aspect-video w-full"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   HeartIcon,
   BookmarkIcon,
@@ -14,6 +14,7 @@ import { FollowPostsButton } from '@/components/contact/FollowPostsButton'
 import { ContactButton } from '@/components/contact/ContactButton'
 import { responseLabel, type PostSide } from '@/lib/posts/response-types'
 import { RequestDocumentsCta } from '@/components/work/RequestDocumentsCta'
+import { VideoPlayer, VideoTimeline, type VideoPlayerHandle } from '@/components/work/VideoPlayer'
 import type { ResponseType } from '@prisma/client'
 import {
   ASPECT_CLASS,
@@ -96,6 +97,7 @@ export function WorkCard({
   viewerSide,
   pendingRequestId,
   documentsFulfilled,
+  chromeHidden,
 }: {
   post: Post
   tint?: string
@@ -107,6 +109,11 @@ export function WorkCard({
   pendingRequestId?: string
   /** Server-derived: the request was fulfilled and links exist. */
   documentsFulfilled?: boolean
+  /** Mobile: the top/bottom bars are slid away. The overlaid header and
+   *  collapsed caption are nudged into the space those bars vacated so they
+   *  clear the bars when shown and reclaim the room when hidden. Transform
+   *  only (GPU), so it stays smooth with the bars' own slide. */
+  chromeHidden?: boolean
 }) {
   const prof = post.professional
   const recruiter = post.recruiterProfile
@@ -134,6 +141,15 @@ export function WorkCard({
   // Collapsed = full-bleed media with the caption overlaid.
   // Expanded  = media shrinks, dark caption panel below in normal flow.
   const [expanded, setExpanded] = useState(false)
+  // Relative time uses Date.now(); compute after mount so SSR and
+  // hydration agree (else "2h" vs "4h" throws a hydration error).
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
+  // Handle into the video player so the timeline (rendered in the caption
+  // block, above the CTA) can drive playback.
+  const playerRef = useRef<VideoPlayerHandle>(null)
+  const isVideo = post.mediaType === 'YOUTUBE' && Boolean(post.videoUrl)
 
   async function toggleLike() {
     const nextLiked = !liked
@@ -267,13 +283,7 @@ export function WorkCard({
   // The media visual, shared by both layout states. `contained` keeps the image
   // object-contain over a blurred copy of itself so nothing is ever cropped.
   const mediaVisual = post.mediaType === 'YOUTUBE' && post.videoUrl ? (
-    <iframe
-      src={post.videoUrl}
-      title={post.title}
-      className="absolute inset-0 h-full w-full"
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-      allowFullScreen
-    />
+    <VideoPlayer ref={playerRef} videoUrl={post.videoUrl} />
   ) : imageUrl ? (
     <>
       {/* Blurred fill behind. Always rendered: it is what shows in the gaps
@@ -316,9 +326,14 @@ export function WorkCard({
     </div>
   )
 
-  // The author header, overlaid on the media in BOTH states.
+  // The author header, overlaid on the media in BOTH states. Pushed DOWN by
+  // the top bar height while the bar is visible, and back to the edge when it
+  // slides away - transform only, so it tracks the bar smoothly.
   const header = (
-    <div className="absolute inset-x-0 top-0 flex items-center gap-3 bg-gradient-to-b from-black/60 to-transparent p-4">
+    <div
+      className="absolute inset-x-0 top-0 flex items-center gap-3 bg-gradient-to-b from-black/60 to-transparent p-4 transition-transform duration-200"
+      style={{ transform: chromeHidden ? 'translateY(0)' : 'translateY(var(--topbar-h))' }}
+    >
       <div className="flex-shrink-0">
         <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-white/20 text-[14px] font-bold text-white backdrop-blur">
           {authorPhoto ? (
@@ -389,7 +404,7 @@ export function WorkCard({
           forced into a portrait frame. `lg:w-auto` + the aspect class lets the
           width follow from the height, so the frame stays height-bound. */}
       <div
-        className={`relative flex h-full w-full flex-col overflow-hidden lg:mx-auto lg:h-full lg:w-auto ${ASPECT_CLASS[aspect]} lg:rounded-2xl lg:border-2 lg:border-white/25`}
+        className="relative flex h-full w-full flex-col overflow-hidden lg:mx-auto lg:h-full lg:w-auto lg:aspect-[9/16] lg:rounded-2xl lg:border-2 lg:border-white/25"
       >
         {/* MEDIA REGION. ONE container whose flex ratio ANIMATES between the
             two states, so the media scales smoothly instead of jumping. The
@@ -410,8 +425,20 @@ export function WorkCard({
             className={`absolute inset-x-0 bottom-0 overflow-hidden bg-gradient-to-t from-black/80 via-black/40 to-transparent px-4 text-white transition-all duration-300 ease-out ${
               expanded ? 'pointer-events-none h-0 pb-0 pt-0 opacity-0' : 'pb-3 pt-16 opacity-100'
             }`}
+            style={{
+              // Lift the collapsed caption above the bottom bar while it is
+              // visible; drop back to the edge when the bar slides away.
+              paddingBottom: chromeHidden
+                ? undefined
+                : 'calc(0.75rem + var(--bottombar-h))',
+            }}
           >
             <div className="pr-12">
+              {isVideo && (
+                <div className="pb-2">
+                  <VideoTimeline playerRef={playerRef} />
+                </div>
+              )}
               {viewerId && author?.id && <div className="pb-2">{cta()}</div>}
               <p className="line-clamp-1 whitespace-pre-wrap text-[14px] leading-relaxed">
                 {caption || post.title}
@@ -425,7 +452,16 @@ export function WorkCard({
                 </button>
               )}
             </div>
-            <div className="absolute bottom-3 right-3">{actionRail}</div>
+            <div
+              className="absolute right-3 transition-all duration-200"
+              style={{
+                bottom: chromeHidden
+                  ? '0.75rem'
+                  : 'calc(0.75rem + var(--bottombar-h))',
+              }}
+            >
+              {actionRail}
+            </div>
           </div>
         </div>
 
@@ -445,6 +481,11 @@ export function WorkCard({
               {/* CTA sits ABOVE the text and does NOT scroll, so it is always
                   reachable whether the text needs to scroll or not. */}
               <div className="shrink-0 px-4 pt-3 pr-16">
+                {isVideo && (
+                  <div className="pb-2">
+                    <VideoTimeline playerRef={playerRef} />
+                  </div>
+                )}
                 {viewerId && author?.id && <div className="pb-2">{cta()}</div>}
               </div>
               {/* Only the TEXT (and Show less, directly beneath it) scrolls,
