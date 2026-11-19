@@ -38,18 +38,8 @@ export function MobileTopBar() {
   const lastY = useRef(0)
 
   useEffect(() => {
-    const onScroll = (e: Event) => {
-      // DO NOT read window.scrollY. The shell is not always the window: the feed
-      // is h-screen overflow-hidden and only its middle column scrolls, so the
-      // window never moves and a window listener never fires. Capture-phase
-      // listeners see scroll events from ANY scrolling element, so we take the
-      // offset from whichever container actually fired.
-      const target = e.target as HTMLElement | Document | null
-      const y =
-        target && target !== document && 'scrollTop' in target
-          ? (target as HTMLElement).scrollTop
-          : window.scrollY
-
+    const onScroll = () => {
+      const y = window.scrollY
       const delta = y - lastY.current
 
       if (y < 64) {
@@ -63,26 +53,14 @@ export function MobileTopBar() {
       lastY.current = y
     }
 
-    // `capture: true` is what makes element-level scrolling visible to us -
-    // scroll does NOT bubble, so a non-capturing listener would only ever hear
-    // the window.
-    document.addEventListener('scroll', onScroll, { passive: true, capture: true })
-    return () =>
-      document.removeEventListener('scroll', onScroll, { capture: true })
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
   return (
     <>
       <header
-        /* FIXED, not sticky. `sticky` keeps the bar's box in the flow, so
-           sliding it out with -translate-y-full left an empty strip where it
-           used to be. `fixed` takes it out of the flow entirely: when it hides,
-           the content underneath genuinely occupies that space.
-
-           The cost is that the bar now OVERLAYS the top of the page, so the
-           content needs matching offset padding. That lives on <main> in
-           app/(app)/layout.tsx (pt-14 lg:pt-0) - keep the two in sync. */
-        className={`fixed inset-x-0 top-0 z-30 flex items-center justify-between border-b border-line bg-white px-4 py-3 transition-transform duration-200 lg:hidden ${
+        className={`sticky top-0 z-30 flex items-center justify-between border-b border-line bg-white px-4 py-3 transition-transform duration-200 lg:hidden ${
           hidden ? '-translate-y-full' : 'translate-y-0'
         }`}
       >
