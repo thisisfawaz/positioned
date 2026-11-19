@@ -33,6 +33,11 @@
        drift apart the way hard-coded -mt-14/-mb-16 did. */
     --topbar-h: calc(60px + 1px);
     --bottombar-h: calc(64px + env(safe-area-inset-bottom, 0px));
+
+    /* Popup/panel surface. Dark mode flattens page and cards to ONE colour,
+       so a modal painted with --surface had no visible panel. Popups get their
+       own slightly lifted value there. Light mode stays plain white. */
+    --modal: #ffffff;
   }
 
   /* Mobile-only chrome padding. Inline styles would beat the lg: classes and
@@ -70,6 +75,9 @@
        page. In dark mode the tint becomes a dark surface instead, so the box
        reads as a subtle fill and its contents stay legible. */
     --brand-light: #242424;
+
+    /* Popups sit ABOVE the flat #0c1014 page; same colour = invisible panel. */
+    --modal: #15191d;
   }
 
   .dark body {

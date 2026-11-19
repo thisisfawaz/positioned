@@ -38,7 +38,7 @@ export function ExperienceFields({
   }
 
   return (
-    <div className="border-t border-[#e5e5e5] pt-6">
+    <div className="border-t border-line pt-6">
       <input type="hidden" name="experiences" value={JSON.stringify(entries)} />
 
       <h3 className="text-sm font-semibold mb-1">Experience</h3>
@@ -48,7 +48,7 @@ export function ExperienceFields({
 
       <div className="space-y-4">
         {entries.map((e, i) => (
-          <div key={i} className="rounded-lg border border-[#e5e5e5] p-4 space-y-3">
+          <div key={i} className="rounded-lg border border-line p-4 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-500">Role {i + 1}</span>
               <button

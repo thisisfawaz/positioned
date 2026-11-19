@@ -5,6 +5,8 @@ import { useSWRConfig } from 'swr'
 import { updateRecruiterProfile, type ProfileFormState } from '@/app/(app)/profile/settings/actions'
 import { ExperienceFields, type ExperienceEntry } from '@/components/settings/ExperienceFields'
 import { CharCounter } from '@/components/settings/CharCounter'
+import { ProfilePhotoPicker } from '@/components/settings/ProfilePhotoPicker'
+import { useFormDirty } from '@/lib/client/use-form-dirty'
 import { ABOUT_MAX } from '@/lib/profile/limits'
 
 type Props = {
@@ -16,6 +18,9 @@ type Props = {
   hiringInterests: string
   recruitingStatus: string
   experiences: ExperienceEntry[]
+  profilePhoto?: string | null
+  /** Reports unsaved changes upward so the modal can warn before closing. */
+  onDirtyChange?: (dirty: boolean) => void
 }
 
 const statusOptions = [
@@ -53,15 +58,29 @@ export function RecruiterSettingsForm(props: Props) {
     }
   }, [state, mutate])
 
+  // Theme tokens, not literals: `border-[#e5e5e5]` is light-only and a white
+  // fill punched bright holes through the dark modal.
   const inputClass =
-    'w-full px-4 py-2 border border-[#e5e5e5] rounded-md focus:outline-none focus:ring-2 focus:ring-near-black/10'
+    'w-full rounded-md border border-line bg-[var(--modal)] px-4 py-2 text-ink placeholder:text-ink-subtle focus:outline-none focus:ring-2 focus:ring-brand/20'
+
+  const { formRef, isDirty } = useFormDirty(true)
+  useEffect(() => {
+    props.onDirtyChange?.(isDirty)
+  }, [isDirty, props])
+  useEffect(() => {
+    if (state?.ok) props.onDirtyChange?.(false)
+  }, [state, props])
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form ref={formRef} action={formAction} className="space-y-6">
+      <ProfilePhotoPicker
+        initialUrl={props.profilePhoto ?? null}
+        displayName={props.name}
+      />
+
       <div>
         <label htmlFor="name" className="block text-sm font-medium mb-1">Full Name</label>
-        <input id="name" name="name" type="text" defaultValue={props.name} required
-          className="w-full px-4 py-2 border border-[#e5e5e5] rounded-md focus:outline-none focus:ring-2 focus:ring-near-black/10" />
+        <input id="name" name="name" type="text" defaultValue={props.name} required className={inputClass} />
       </div>
 
       <div>
@@ -98,7 +117,7 @@ export function RecruiterSettingsForm(props: Props) {
         <label htmlFor="organization" className="block text-sm font-medium mb-1">Organization</label>
         <input id="organization" name="organization" type="text" defaultValue={props.organization}
           placeholder="e.g. Acme Inc."
-          className="w-full px-4 py-2 border border-[#e5e5e5] rounded-md focus:outline-none focus:ring-2 focus:ring-near-black/10" />
+          className={inputClass} />
       </div>
 
       <div>
@@ -107,14 +126,14 @@ export function RecruiterSettingsForm(props: Props) {
           onChange={(e) => setAboutValue(e.target.value)}
           maxLength={ABOUT_MAX}
           placeholder="A short summary of you and what you hire for."
-          className="w-full px-4 py-2 border border-[#e5e5e5] rounded-md focus:outline-none focus:ring-2 focus:ring-near-black/10" />
+          className={inputClass} />
         <CharCounter length={aboutValue.length} max={ABOUT_MAX} />
       </div>
 
       <div>
         <label htmlFor="recruitingStatus" className="block text-sm font-medium mb-1">Status</label>
         <select id="recruitingStatus" name="recruitingStatus" defaultValue={props.recruitingStatus}
-          className="w-full px-4 py-2 border border-[#e5e5e5] rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-near-black/10">
+          className={inputClass}>
           {statusOptions.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
@@ -125,19 +144,19 @@ export function RecruiterSettingsForm(props: Props) {
         <label htmlFor="location" className="block text-sm font-medium mb-1">Location</label>
         <input id="location" name="location" type="text" defaultValue={props.location}
           placeholder="e.g. Lagos, Nigeria"
-          className="w-full px-4 py-2 border border-[#e5e5e5] rounded-md focus:outline-none focus:ring-2 focus:ring-near-black/10" />
+          className={inputClass} />
       </div>
 
       <div>
         <label htmlFor="hiringInterests" className="block text-sm font-medium mb-1">Hiring Interests</label>
         <textarea id="hiringInterests" name="hiringInterests" rows={4} defaultValue={props.hiringInterests}
           placeholder="What kind of roles and skills are you hiring for?"
-          className="w-full px-4 py-2 border border-[#e5e5e5] rounded-md focus:outline-none focus:ring-2 focus:ring-near-black/10" />
+          className={inputClass} />
       </div>
 
       <ExperienceFields
         initial={props.experiences}
-        inputClass="w-full px-4 py-2 border border-[#e5e5e5] rounded-md focus:outline-none focus:ring-2 focus:ring-near-black/10"
+        inputClass={inputClass}
       />
 
       {/* Feedback sits directly ABOVE the Save button, matching the

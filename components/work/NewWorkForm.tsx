@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useEffect, useMemo, useState } from 'react'
+import { useFormDirty } from '@/lib/client/use-form-dirty'
 import {
   createWorkPost,
   updateWorkPost,
@@ -75,10 +76,13 @@ function youtubeEmbed(raw: string): string | null {
 export function WorkForm({
   initial,
   onPublished,
+  onDirtyChange,
 }: {
   initial?: Initial
   /** Called after a successful CREATE, so the opener can refresh and close. */
   onPublished?: () => void
+  /** Reports unsaved changes upward so the modal can warn before closing. */
+  onDirtyChange?: (dirty: boolean) => void
 }) {
   const isEdit = !!initial
   const action = isEdit ? updateWorkPost : createWorkPost
@@ -98,6 +102,13 @@ export function WorkForm({
   const [videoUrl, setVideoUrl] = useState<string>(initial?.videoUrl ?? '')
   const [applyUrl, setApplyUrl] = useState<string>(initial?.applyUrl ?? '')
   const [uploading, setUploading] = useState(false)
+  const { formRef, isDirty } = useFormDirty(true)
+  useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
+  useEffect(() => {
+    if (state?.ok) onDirtyChange?.(false)
+  }, [state, onDirtyChange])
   const [uploadError, setUploadError] = useState<string | null>(null)
   // Which frame the post is shown in. Auto-detected from the image on upload so
   // the user confirms rather than guesses; still overridable.
@@ -162,7 +173,7 @@ export function WorkForm({
   const dv = (field: string, fallback?: string) => v?.[field] ?? fallback
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form ref={formRef} action={formAction} className="space-y-6">
       {isEdit && <input type="hidden" name="postId" value={initial!.id} />}
       <input type="hidden" name="desiredResponse" value={desiredResponse} />
       <input type="hidden" name="mediaUrl" value={mediaUrl ?? ''} />

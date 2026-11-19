@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { ConfirmDiscard } from '@/components/ui/ConfirmDiscard'
 
 /**
  * Shared modal shell.
@@ -16,7 +17,9 @@ export function Modal({
   ariaLabel,
   children,
   maxWidth = 'max-w-[640px]',
-  fullScreenOnMobile = false,
+  fullScreenOnMobile = true,
+  isDirty = false,
+  discardMessage,
 }: {
   open: boolean
   onClose: () => void
@@ -24,7 +27,21 @@ export function Modal({
   ariaLabel?: string
   children: React.ReactNode
   maxWidth?: string
-  /** Edge-to-edge, full-height panel below `sm`. Desktop keeps the centred card. */
+  /**
+   * When true, ANY close attempt (Escape, backdrop, ×) opens a
+   * "Discard changes?" confirmation instead of closing. Forms should set this
+   * from a comparison against their initial values, so an untouched form still
+   * closes immediately.
+   */
+  isDirty?: boolean
+  /** Override the confirmation wording for a specific form. */
+  discardMessage?: string
+  /**
+   * Edge-to-edge, full-height, SQUARE-cornered panel below `sm`. DEFAULT TRUE:
+   * the user asked that every popup fill the phone screen. Desktop keeps the
+   * centred rounded card. Pass `false` only for a popup that should stay a
+   * floating card on mobile.
+   */
   fullScreenOnMobile?: boolean
 }) {
   const panelRef = useRef<HTMLDivElement>(null)
@@ -38,6 +55,21 @@ export function Modal({
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
 
+  // Dirty state is read through refs inside the keydown effect, which is keyed
+  // on `open` only - otherwise every keystroke would tear down and re-add the
+  // listener (and steal focus, the same bug onClose had).
+  const dirtyRef = useRef(isDirty)
+  dirtyRef.current = isDirty
+  const [confirmOpen, setConfirmOpen] = useState(false)
+
+  /** Route every close path through here. */
+  const requestClose = () => {
+    if (dirtyRef.current) setConfirmOpen(true)
+    else onCloseRef.current()
+  }
+  const requestCloseRef = useRef(requestClose)
+  requestCloseRef.current = requestClose
+
   useEffect(() => {
     if (!open) return
 
@@ -45,7 +77,7 @@ export function Modal({
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onCloseRef.current()
+        requestCloseRef.current()
         return
       }
       if (e.key !== 'Tab' || !panelRef.current) return
@@ -86,7 +118,7 @@ export function Modal({
           ? 'items-stretch overflow-hidden p-0 sm:items-start sm:overflow-y-auto sm:py-10 sm:px-4'
           : 'items-start overflow-y-auto py-10 px-4'
       }`}
-      onClick={onClose}
+      onClick={requestClose}
     >
       <div
         ref={panelRef}
@@ -94,9 +126,9 @@ export function Modal({
         aria-modal="true"
         aria-label={ariaLabel}
         tabIndex={-1}
-        className={`w-full ${maxWidth} bg-surface shadow-pop outline-none ${
+        className={`w-full ${maxWidth} bg-[var(--modal)] shadow-pop outline-none ${
           fullScreenOnMobile
-            ? 'flex h-full flex-col rounded-none border-0 sm:h-auto sm:max-h-[calc(100dvh-5rem)] sm:rounded-[1.5rem] sm:border sm:border-line'
+            ? 'flex h-full flex-col rounded-none border-0 sm:h-auto sm:max-h-[calc(100dvh-5rem)] sm:overflow-hidden sm:rounded-[1.5rem] sm:border sm:border-line'
             : 'rounded-[1.5rem] border border-line'
         }`}
         onClick={(e) => e.stopPropagation()}
@@ -106,7 +138,7 @@ export function Modal({
             <h2 className="text-[17px] font-bold text-ink">{title}</h2>
             <button
               type="button"
-              onClick={onClose}
+              onClick={requestClose}
               aria-label="Close"
               className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-subtle transition-colors hover:bg-surface-sunken hover:text-ink"
             >
@@ -117,13 +149,23 @@ export function Modal({
         <div
           className={
             fullScreenOnMobile
-              ? 'scroll-hidden flex min-h-0 flex-1 flex-col overflow-y-auto p-4 sm:block sm:overflow-visible sm:p-6'
+              ? 'scroll-hidden flex min-h-0 flex-1 flex-col overflow-y-auto p-4 sm:block sm:min-h-0 sm:p-6'
               : 'p-6'
           }
         >
           {children}
         </div>
       </div>
+
+      <ConfirmDiscard
+        open={confirmOpen}
+        body={discardMessage}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          setConfirmOpen(false)
+          onCloseRef.current()
+        }}
+      />
     </div>
   )
 }

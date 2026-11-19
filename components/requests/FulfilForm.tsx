@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useEffect } from 'react'
+import { useFormDirty } from '@/lib/client/use-form-dirty'
 import Link from 'next/link'
 import {
   fulfilDocumentRequest,
@@ -22,6 +23,7 @@ export function FulfilForm({
   portfolioUrl,
   alreadyFulfilled,
   onDone,
+  onDirtyChange,
 }: {
   requestId: string
   response: ResponseType
@@ -30,6 +32,8 @@ export function FulfilForm({
   alreadyFulfilled?: boolean
   /** Called after a successful submit, so a modal wrapper can close. */
   onDone?: () => void
+  /** Reports unsaved changes upward so the modal can warn before closing. */
+  onDirtyChange?: (dirty: boolean) => void
 }) {
   const [state, formAction, pending] = useActionState<RequestActionState, FormData>(
     fulfilDocumentRequest,
@@ -41,6 +45,14 @@ export function FulfilForm({
   useEffect(() => {
     if (state.ok) onDone?.()
   }, [state.ok, onDone])
+
+  const { formRef, isDirty } = useFormDirty(true)
+  useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
+  useEffect(() => {
+    if (state.ok) onDirtyChange?.(false)
+  }, [state.ok, onDirtyChange])
 
   const wantsCv = response === 'CV' || response === 'CV_AND_PORTFOLIO'
   const wantsPortfolio = response === 'PORTFOLIO' || response === 'CV_AND_PORTFOLIO'
@@ -65,7 +77,7 @@ export function FulfilForm({
     'w-full px-4 py-2 border border-[#e5e5e5] rounded-md focus:outline-none focus:ring-2 focus:ring-near-black/10'
 
   return (
-    <form action={formAction} className="space-y-5">
+    <form ref={formRef} action={formAction} className="space-y-5">
       <input type="hidden" name="requestId" value={requestId} />
 
       {wantsCv && (

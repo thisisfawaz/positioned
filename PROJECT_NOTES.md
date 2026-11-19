@@ -233,6 +233,23 @@ done, delete it here and record the outcome in the Change Log.
 
 ## Change Log
 
+### 2026-11-19 - Profile photos (both roles), unsaved-changes guard, modal fixes, bio/name layout
+
+- PROFILE PHOTO UPLOAD: new `components/settings/ProfilePhotoPicker.tsx` uploads via the EXISTING `/api/upload` route (same MIME + size validation) and writes the returned `/uploads/...` path into a hidden `profilePhoto` field. Preview + Change/Remove, inline errors, initials fallback.
+- RECRUITERS CAN NOW UPLOAD: `profilePhoto String?` added to `RecruiterProfile` in `prisma/schema.prisma`, with raw SQL in `supabase/033_recruiter_profile_photo.sql` (NOT `db push` - the username partial-index drift still blocks it). THE MIGRATION HAS NOT BEEN APPLIED - the user must run the ALTER TABLE in Supabase or recruiter saves will fail.
+- Both settings actions read `profilePhoto` and accept ONLY `^/uploads/[\w.-]+$`, so a crafted request cannot inject an external URL.
+- UPLOAD CAP: 8MB -> 5MB (`app/api/upload/route.ts` + the picker hint).
+- PROFILE HEADER: avatar enlarged (h-16 -> h-24, sm:h-28) and wrapped in new `components/profile/PhotoLightbox.tsx` - click opens the photo full-size over a portal backdrop (the profile page sits inside transformed ancestors, so an inline fixed overlay would misplace).
+- NAME/USERNAME moved to the RIGHT of the photo; the BIO sits under them. TITLE/ORGANIZATION/recruiting pill stay BELOW the row. GOTCHA: the field labelled "Bio" is stored as `title`; the field labelled "About" is stored as `bio`. I first added `bio` beside the name and the user rightly called it wrong - it must be `title`.
+- UNSAVED-CHANGES GUARD (app-wide): new `lib/client/use-form-dirty.ts` (listens for input/change on the form element, no per-field wiring) and `components/ui/ConfirmDiscard.tsx`. `Modal` gained `isDirty` + `discardMessage`; EVERY close path (Escape, backdrop, x) goes through `requestClose`, which asks before discarding. Wired into ProfessionalSettingsForm, RecruiterSettingsForm, WorkForm, RecruitmentForm. Each clears its flag on a successful save. NOT yet covered: FulfilForm (it is not inside a Modal) and BoostForm.
+- MODAL BACKGROUND, THE REAL CAUSE: popups were `bg-surface`, which the flat dark theme made identical to the page - no visible panel. Added a dedicated `--modal` token (`#ffffff` light, `#15191d` dark) used by `Modal` and `CountryMultiSelect`.
+- "BACKGROUND STOPS AT STATUS": the desktop panel was capped at `max-h-[calc(100dvh-5rem)]` while the body had `sm:overflow-visible`, so the FORM OVERFLOWED PAST THE PANEL and rendered on the page with no background. Fixed with `sm:overflow-hidden` on the panel and `sm:min-h-0` on the body. Three earlier guesses (colour, token, width) all missed this - it was overflow.
+- FORM INPUTS: every hardcoded `border-[#e5e5e5]` / `bg-white` in both settings forms, ExperienceFields, and the photo picker switched to `border-line` / `bg-[var(--modal)]`. Those literals were punching bright holes through the dark modal.
+- MOBILE MODALS: `fullScreenOnMobile` now DEFAULTS TRUE - every popup fills the phone screen with square corners. Desktop unchanged.
+- CREATE POST ON MOBILE OPENED BELOW THE PAGE: `CreatePostTrigger` renders inside the mobile bottom nav, which is `fixed` AND transformed. A transformed ancestor becomes the containing block for `position: fixed` children, so the modal positioned against the NAV. Fixed by portalling the modal to `document.body`.
+- NOT YET DONE: the `profilePhoto` migration must be applied by the user; recruiter avatars elsewhere (cards, ProfileBody now reads it) still need checking; FulfilForm + BoostForm have no discard guard.
+- VERIFIED: `npx tsc --noEmit` clean after every step. NOT verified: a full `next build` (pre-existing Prisma EPERM lock and Turbopack next/font bug).
+
 ### 2026-11-19 - Responses page (post-grouped + modal), row alignment, page restyles, flat dark theme, menu tweaks
 
 - REQUESTS -> RESPONSES: `/requests` renamed to `/responses` (`git mv`; the parenthesis in `(app)` needs quoting or git mv fails with ENOENT). Nav label + href, 3 `revalidatePath` calls in `app/(app)/profile/requests/actions.ts`, `FulfilForm` back-link and `RequestDocumentsCta` 'Submitted - view' link all updated. `app/api/notifications/route.ts` deliberately LEFT on `/requests/${r.id}` - that is the fulfil DETAIL page, which did not move.

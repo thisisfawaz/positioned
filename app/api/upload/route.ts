@@ -18,7 +18,7 @@ import { getCurrentUser } from '@/lib/auth/get-current-user'
  * row without re-deriving anything.
  */
 
-const MAX_BYTES = 8 * 1024 * 1024 // 8MB
+const MAX_BYTES = 5 * 1024 * 1024 // 5MB
 
 const EXT_BY_MIME: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
 
   if (file.size > MAX_BYTES) {
     return NextResponse.json(
-      { error: 'That image is larger than 8MB.' },
+      { error: 'That image is larger than 5MB.' },
       { status: 413 }
     )
   }

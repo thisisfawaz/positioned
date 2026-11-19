@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { initialsOf } from '@/lib/client/social'
+import { PhotoLightbox } from '@/components/profile/PhotoLightbox'
 import { ContactButton } from '@/components/contact/ContactButton'
 import { SaveProfessionalButton } from '@/components/contact/SaveProfessionalButton'
 import { FollowPostsButton } from '@/components/contact/FollowPostsButton'
@@ -46,24 +47,33 @@ export function ProfileBody({
             wrapper is full-bleed, so the tabs + published grid below can reach
             the screen edge. Restore px-4 at sm+. */}
         <div className="px-3 sm:px-0">
-        {/* Avatar on top, then name/handle, then actions, then the bio below. */}
-        <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-light text-lg font-bold text-ink">
-          {prof?.profilePhoto ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={prof.profilePhoto} alt={displayName} className="h-full w-full object-cover" />
-          ) : (
-            initialsOf(displayName)
-          )}
+        {/* Photo on the LEFT, name/handle/role on the RIGHT. `items-center`
+            keeps the text block vertically centred against the avatar. */}
+        <div className="flex items-center gap-4">
+          <PhotoLightbox
+            src={prof?.profilePhoto ?? recruiter?.profilePhoto ?? null}
+            alt={displayName}
+            initials={initialsOf(displayName)}
+            className="h-24 w-24 text-[26px] sm:h-28 sm:w-28 sm:text-[30px]"
+          />
+
+          {/* Name, username, then the BIO. NOTE: the field labelled "Bio" in
+              the edit form is stored as `title`; the field labelled "About" is
+              stored as `bio`. So the bio here is `title`. */}
+          <div className="min-w-0">
+            <h1 className="text-[19px] font-bold leading-tight text-ink">{displayName}</h1>
+            {user.username && (
+              <p className="text-[13px] text-ink-subtle">@{user.username}</p>
+            )}
+            {prof?.title && (
+              <p className="mt-1 text-[14px] font-medium text-ink">{prof.title}</p>
+            )}
+          </div>
         </div>
 
-        <div className="mt-2 min-w-0">
-          <h1 className="text-[19px] font-bold leading-tight text-ink">{displayName}</h1>
-          {user.username && (
-            <p className="text-[13px] text-ink-subtle">@{user.username}</p>
-          )}
-          {prof?.title && (
-            <p className="text-[14px] font-medium text-ink">{prof.title}</p>
-          )}
+        {/* Organization / recruiting pill stay BELOW the photo+name row.
+            (The professional title is the BIO and now renders beside the name.) */}
+        <div className="mt-3 min-w-0">
           {recruiter?.organization && (
             <p className="text-[14px] font-medium text-ink">{recruiter.organization}</p>
           )}

@@ -1,6 +1,7 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
+import { useFormDirty } from '@/lib/client/use-form-dirty'
 import {
   createRecruitment,
   updateRecruitment,
@@ -36,9 +37,12 @@ const applyMethods: { value: ApplyMethod; label: string; hint: string }[] = [
 export function RecruitmentForm({
   initial,
   initialEmploymentType,
+  onDirtyChange,
 }: {
   initial?: Initial
   initialEmploymentType?: string
+  /** Reports unsaved changes upward so the modal can warn before closing. */
+  onDirtyChange?: (dirty: boolean) => void
 }) {
   const isEdit = Boolean(initial?.id)
 
@@ -57,6 +61,13 @@ export function RecruitmentForm({
   const [videoUrl, setVideoUrl] = useState<string>('')
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const { formRef, isDirty } = useFormDirty(true)
+  useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
+  useEffect(() => {
+    if (state?.ok) onDirtyChange?.(false)
+  }, [state, onDirtyChange])
 
   function youtubeEmbed(raw: string): string | null {
     const val = raw.trim()
@@ -109,7 +120,7 @@ export function RecruitmentForm({
     'w-full px-4 py-2 border border-[#e5e5e5] rounded-md focus:outline-none focus:ring-2 focus:ring-brand/30'
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form ref={formRef} action={formAction} className="space-y-6">
       {isEdit && <input type="hidden" name="id" value={initial!.id} />}
       <input type="hidden" name="salaryHidden" value={salaryHidden ? 'true' : 'false'} />
       <input type="hidden" name="applyMethod" value={applyMethod} />

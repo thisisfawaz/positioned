@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { useUser } from '@/lib/client/use-user'
 import { ProfessionalSettingsForm } from '@/components/settings/ProfessionalSettingsForm'
@@ -22,6 +23,8 @@ export function ProfileEditModal({
   onClose: () => void
 }) {
   const { user } = useUser()
+  // Set by whichever form is rendered. Drives the discard confirmation.
+  const [dirty, setDirty] = useState(false)
 
   const key = user
     ? `${user.id}-${user.name}-${user.username ?? ''}-${user.professionalProfile?.title ?? ''}-${user.recruiterProfile?.organization ?? ''}`
@@ -35,6 +38,8 @@ export function ProfileEditModal({
       ariaLabel="Edit profile"
       maxWidth="max-w-[720px]"
       fullScreenOnMobile
+      isDirty={dirty}
+      discardMessage="You have unsaved profile changes. If you close now they will be lost."
     >
       {!user ? (
         <div className="space-y-6">
@@ -62,6 +67,8 @@ export function ProfileEditModal({
           githubUrl={user.professionalProfile.githubUrl || ''}
           websiteUrl={user.professionalProfile.websiteUrl || ''}
           contactEmail={user.professionalProfile.contactEmail || ''}
+          profilePhoto={user.professionalProfile.profilePhoto ?? null}
+          onDirtyChange={setDirty}
           experiences={(user.professionalProfile.experiences || []).map(
             (e: any) => ({
               title: e.title || '',
@@ -87,6 +94,8 @@ export function ProfileEditModal({
           location={user.recruiterProfile.location || ''}
           hiringInterests={user.recruiterProfile.hiringInterests || ''}
           recruitingStatus={user.recruiterProfile.recruitingStatus || 'CURRENTLY_RECRUITING'}
+          profilePhoto={user.recruiterProfile.profilePhoto ?? null}
+          onDirtyChange={setDirty}
           experiences={(user.recruiterProfile.experiences || []).map((e: any) => ({
             title: e.title || '',
             company: e.company || '',

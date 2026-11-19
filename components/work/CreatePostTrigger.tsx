@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { WorkComposerModal } from '@/components/work/WorkComposerModal'
 
 /**
@@ -30,7 +31,17 @@ export function CreatePostTrigger({
       <button type="button" onClick={() => setOpen(true)} aria-label={ariaLabel} title={title} className={className}>
         {children}
       </button>
-      <WorkComposerModal open={open} onClose={() => setOpen(false)} />
+      {/* PORTAL, not inline. This trigger is used inside the mobile bottom nav,
+          which is `fixed` AND transformed (translate-y on hide). A transformed
+          ancestor becomes the containing block for `position: fixed`
+          descendants, so an inline modal was positioned relative to the NAV and
+          opened below the page. Portalling to body escapes that entirely. */}
+      {open &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <WorkComposerModal open={open} onClose={() => setOpen(false)} />,
+          document.body
+        )}
     </>
   )
 }

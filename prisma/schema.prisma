@@ -363,6 +363,7 @@ model RecruiterProfile {
   role            String?
   bio             String?
   location        String?
+  profilePhoto    String?
   hiringInterests String?
   recruitingStatus RecruitingStatus @default(CURRENTLY_RECRUITING)
   isVerified      Boolean  @default(false)

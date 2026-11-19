@@ -79,6 +79,9 @@ export async function updateProfessionalProfile(
   const githubUrl = normalizeUrl(String(formData.get('githubUrl') || ''))
   const websiteUrl = normalizeUrl(String(formData.get('websiteUrl') || ''))
   const contactEmail = String(formData.get('contactEmail') || '').trim()
+  // Only accept a path this app produced, never an arbitrary URL.
+  const photoRaw = String(formData.get('profilePhoto') || '').trim()
+  const profilePhoto = /^\/uploads\/[\w.-]+$/.test(photoRaw) ? photoRaw : null
   const experiences = parseExperiences(formData)
 
   if (!name) {
@@ -127,6 +130,7 @@ export async function updateProfessionalProfile(
           githubUrl: githubUrl || null,
           websiteUrl: websiteUrl || null,
           contactEmail: contactEmail || null,
+          profilePhoto,
         },
       })
 
@@ -199,6 +203,9 @@ export async function updateRecruiterProfile(
   const bio = String(formData.get('bio') || '').trim()
   const location = String(formData.get('location') || '').trim()
   const hiringInterests = String(formData.get('hiringInterests') || '').trim()
+  // Only accept a path this app produced, never an arbitrary URL.
+  const photoRaw = String(formData.get('profilePhoto') || '').trim()
+  const profilePhoto = /^\/uploads\/[\w.-]+$/.test(photoRaw) ? photoRaw : null
   const experiences = parseExperiences(formData)
   const statusRaw = String(formData.get('recruitingStatus') || 'CURRENTLY_RECRUITING')
   const recruitingStatus =
@@ -226,6 +233,7 @@ export async function updateRecruiterProfile(
           location: location || null,
           hiringInterests: hiringInterests || null,
           recruitingStatus: recruitingStatus as any,
+          profilePhoto,
         },
       })
 

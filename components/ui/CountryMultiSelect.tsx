@@ -141,7 +141,7 @@ export function CountryMultiSelect({
 
              The list keeps its own scroll (`overflow-y-auto` + `scroll-hidden`)
              so all countries remain reachable within whatever height it gets. */
-          className="scroll-hidden absolute top-full z-20 mt-1 max-h-[min(12rem,50vh)] w-full overflow-y-auto rounded-lg border border-line bg-surface shadow-pop"
+          className="scroll-hidden absolute top-full z-20 mt-1 max-h-[min(12rem,50vh)] w-full overflow-y-auto rounded-lg border border-line bg-[var(--modal)] shadow-pop"
         >
           {groups.length === 0 ? (
             <p className="px-3 py-3 text-[13px] text-ink-muted">

@@ -5,6 +5,8 @@ import { useSWRConfig } from 'swr'
 import { updateProfessionalProfile, type ProfileFormState } from '@/app/(app)/profile/settings/actions'
 import { ExperienceFields, type ExperienceEntry } from '@/components/settings/ExperienceFields'
 import { CharCounter } from '@/components/settings/CharCounter'
+import { ProfilePhotoPicker } from '@/components/settings/ProfilePhotoPicker'
+import { useFormDirty } from '@/lib/client/use-form-dirty'
 import { BIO_MAX, ABOUT_MAX } from '@/lib/profile/limits'
 
 type Props = {
@@ -22,6 +24,9 @@ type Props = {
   websiteUrl: string
   contactEmail: string
   experiences: ExperienceEntry[]
+  profilePhoto?: string | null
+  /** Reports unsaved changes upward so the modal can warn before closing. */
+  onDirtyChange?: (dirty: boolean) => void
 }
 
 const availabilityOptions = [
@@ -67,11 +72,28 @@ export function ProfessionalSettingsForm(props: Props) {
     }
   }, [state, mutate])
 
+  // Theme tokens, not literals: `border-[#e5e5e5]` is a light-only colour, and
+  // a hardcoded white fill punched bright holes through the dark modal.
   const inputClass =
-    'w-full px-4 py-2 border border-[#e5e5e5] rounded-md focus:outline-none focus:ring-2 focus:ring-near-black/10'
+    'w-full rounded-md border border-line bg-[var(--modal)] px-4 py-2 text-ink placeholder:text-ink-subtle focus:outline-none focus:ring-2 focus:ring-brand/20'
+
+  // Any edit marks the form dirty; a successful save clears it so the modal
+  // closes without asking.
+  const { formRef, isDirty } = useFormDirty(true)
+  useEffect(() => {
+    props.onDirtyChange?.(isDirty)
+  }, [isDirty, props])
+  useEffect(() => {
+    if (state?.ok) props.onDirtyChange?.(false)
+  }, [state, props])
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form ref={formRef} action={formAction} className="space-y-6">
+      <ProfilePhotoPicker
+        initialUrl={props.profilePhoto ?? null}
+        displayName={props.name}
+      />
+
       <div>
         <label htmlFor="name" className="block text-sm font-medium mb-1">Full Name</label>
         <input id="name" name="name" type="text" defaultValue={props.name} required className={inputClass} />
@@ -154,7 +176,7 @@ export function ProfessionalSettingsForm(props: Props) {
 
       <div>
         <label htmlFor="availability" className="block text-sm font-medium mb-1">Availability</label>
-        <select id="availability" name="availability" defaultValue={props.availability} className={`${inputClass} bg-white`}>
+        <select id="availability" name="availability" defaultValue={props.availability} className={inputClass}>
           {availabilityOptions.map((opt) => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
@@ -167,7 +189,7 @@ export function ProfessionalSettingsForm(props: Props) {
         <p className="text-xs text-gray-500 mt-1">Separate skills with commas.</p>
       </div>
 
-      <div className="border-t border-[#e5e5e5] pt-6">
+      <div className="border-t border-line pt-6">
         <h3 className="text-sm font-semibold mb-1">Social Links</h3>
         <p className="text-xs text-gray-500 mb-4">
           At least one social link is required. These help recruiters reach you.
@@ -194,7 +216,7 @@ export function ProfessionalSettingsForm(props: Props) {
 
       <ExperienceFields initial={props.experiences} inputClass={inputClass} />
 
-      <div className="border-t border-[#e5e5e5] pt-6">
+      <div className="border-t border-line pt-6">
         <label htmlFor="contactEmail" className="block text-sm font-medium mb-1">Contact Email (optional)</label>
         <input id="contactEmail" name="contactEmail" type="email" defaultValue={props.contactEmail} placeholder="Where recruiters should reach you (defaults to your account email)" className={inputClass} />
         <p className="text-xs text-gray-500 mt-1">Not shown publicly. Used only when a recruiter sends you a message.</p>
