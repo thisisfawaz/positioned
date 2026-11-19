@@ -33,13 +33,7 @@ export default async function AppLayout({
             The reel cancels exactly those same variables (see ReelFeed) so it
             fills the space BETWEEN the bars, and then grows to full screen
             when the bars slide away on scroll. */}
-        <main
-          className="min-w-0 flex-1 lg:pb-0 lg:pt-0"
-          style={{
-            paddingTop: 'var(--topbar-h)',
-            paddingBottom: 'var(--bottombar-h)',
-          }}
-        >
+        <main className="app-main min-w-0 flex-1">
           {children}
         </main>
       </div>

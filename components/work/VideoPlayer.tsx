@@ -108,6 +108,9 @@ export const VideoPlayer = forwardRef<
   { videoUrl: string | null | undefined }
 >(function VideoPlayer({ videoUrl }, ref) {
   const videoId = youtubeVideoId(videoUrl)
+  // YouTube REPLACES the mount div with an iframe, so the mount node becomes
+  // detached. Observe this STABLE wrapper instead - it is never replaced.
+  const wrapperRef = useRef<HTMLDivElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const playerRef = useRef<YTPlayer | null>(null)
   const [ready, setReady] = useState(false)
@@ -180,21 +183,27 @@ export const VideoPlayer = forwardRef<
   }, [videoId])
 
   // Autoplay (muted) when in view; pause when out of view.
+  // NOTE: observe wrapperRef, NOT containerRef. YouTube replaces the mount div
+  // with an iframe, so containerRef is detached and an observer on it never
+  // fires - that was why nothing autoplayed on desktop OR mobile.
   useEffect(() => {
-    const el = containerRef.current
+    const el = wrapperRef.current
     if (!el || !ready) return
     const io = new IntersectionObserver(
       ([entry]) => {
         const p = playerRef.current
         if (!p) return
-        if (entry.isIntersecting && entry.intersectionRatio > 0.6) {
+        // Play as soon as the card is essentially on screen (10%), not only
+        // once it is 60% in view - waiting for 60% made the video sit on the
+        // thumbnail while the user was already looking at it.
+        if (entry.isIntersecting && entry.intersectionRatio > 0.1) {
           p.mute()
           p.playVideo()
         } else {
           p.pauseVideo()
         }
       },
-      { threshold: [0, 0.6, 1] }
+      { threshold: [0, 0.1, 0.6, 1] }
     )
     io.observe(el)
     return () => io.disconnect()
@@ -261,7 +270,19 @@ export const VideoPlayer = forwardRef<
   return (
     <div className="absolute inset-0">
       {/* The iframe mounts here, behind our tap layer. */}
-      <div className="absolute inset-0">
+      <div ref={wrapperRef} className="absolute inset-0">
+        {/* Thumbnail poster: shown until the video actually starts, so the
+            frame is never blank (e.g. muted autoplay blocked on iOS, or before
+            the player initialises). YouTube serves this from its image CDN. */}
+        {videoId && !ready && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`}
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        )}
         <div ref={containerRef} className="h-full w-full" />
       </div>
 

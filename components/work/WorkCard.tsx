@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from 'react'
 import {
   HeartIcon,
   BookmarkIcon,
-  CommentIcon,
   SendIcon,
   MoreIcon,
 } from '@/components/icons'
@@ -145,6 +144,18 @@ export function WorkCard({
   // hydration agree (else "2h" vs "4h" throws a hydration error).
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
+
+  // Desktop has NO fixed top/bottom bars over the reel, so the bar-height
+  // offsets (header push-down, caption lift, rail lift) are mobile-only.
+  // Track the breakpoint here too so the card can skip them on desktop.
+  const [isDesktop, setIsDesktop] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)')
+    const apply = () => setIsDesktop(mq.matches)
+    apply()
+    mq.addEventListener('change', apply)
+    return () => mq.removeEventListener('change', apply)
+  }, [])
 
   // Handle into the video player so the timeline (rendered in the caption
   // block, above the CTA) can drive playback.
@@ -326,13 +337,20 @@ export function WorkCard({
     </div>
   )
 
-  // The author header, overlaid on the media in BOTH states. Pushed DOWN by
-  // the top bar height while the bar is visible, and back to the edge when it
-  // slides away - transform only, so it tracks the bar smoothly.
+  // The author header, overlaid on the media in BOTH states. On MOBILE it is
+  // pushed down by the top bar height while the bar is visible (transform
+  // only, so it tracks the bar smoothly). DESKTOP has no fixed bar over the
+  // reel, so it sits flush at the top edge - the original behaviour.
   const header = (
     <div
-      className="absolute inset-x-0 top-0 flex items-center gap-3 bg-gradient-to-b from-black/60 to-transparent p-4 transition-transform duration-200"
-      style={{ transform: chromeHidden ? 'translateY(0)' : 'translateY(var(--topbar-h))' }}
+      className={`absolute inset-x-0 top-0 flex items-center gap-3 bg-gradient-to-b from-black/60 to-transparent p-4 ${isDesktop ? '' : 'transition-transform duration-200'}`}
+      style={{
+        transform: isDesktop
+          ? undefined
+          : chromeHidden
+            ? 'translateY(0)'
+            : 'translateY(var(--topbar-h))',
+      }}
     >
       <div className="flex-shrink-0">
         <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-white/20 text-[14px] font-bold text-white backdrop-blur">
@@ -369,22 +387,17 @@ export function WorkCard({
     </div>
   )
 
-  // The action rail, docked bottom-right in both states.
+  // The action rail: horizontal, rendered INLINE beside the CTA.
+  // Heart, save, share only - the comment icon was removed.
   const actionRail = (
-    <div className="flex flex-col items-center gap-4">
+    <div className="flex items-center gap-3">
       <button
         onClick={toggleLike}
         aria-pressed={liked}
         aria-label={liked ? 'Unlike' : 'Like'}
         className={liked ? 'text-rose-500' : 'text-white'}
       >
-        <HeartIcon className="h-[24px] w-[24px]" style={liked ? { fill: 'currentColor' } : undefined} />
-      </button>
-      <span aria-label="Comment" className="text-white">
-        <CommentIcon className="h-[24px] w-[24px]" />
-      </span>
-      <button onClick={send} aria-label="Send" className="text-white">
-        <SendIcon className="h-[24px] w-[24px]" />
+        <HeartIcon className="h-[22px] w-[22px]" style={liked ? { fill: 'currentColor' } : undefined} />
       </button>
       <button
         onClick={toggleSave}
@@ -392,7 +405,10 @@ export function WorkCard({
         aria-label={saved ? 'Unsave' : 'Save'}
         className={saved ? 'text-ink' : 'text-white'}
       >
-        <BookmarkIcon className="h-[24px] w-[24px]" style={saved ? { fill: 'currentColor' } : undefined} />
+        <BookmarkIcon className="h-[22px] w-[22px]" style={saved ? { fill: 'currentColor' } : undefined} />
+      </button>
+      <button onClick={send} aria-label="Share" className="text-white">
+        <SendIcon className="h-[22px] w-[22px]" />
       </button>
     </div>
   )
@@ -426,20 +442,28 @@ export function WorkCard({
               expanded ? 'pointer-events-none h-0 pb-0 pt-0 opacity-0' : 'pb-3 pt-16 opacity-100'
             }`}
             style={{
-              // Lift the collapsed caption above the bottom bar while it is
-              // visible; drop back to the edge when the bar slides away.
-              paddingBottom: chromeHidden
+              // MOBILE only: lift the collapsed caption above the bottom bar
+              // while it is visible; drop back to the edge when it slides away.
+              // DESKTOP has no bottom bar over the reel, so keep the plain pb-3.
+              paddingBottom: isDesktop
                 ? undefined
-                : 'calc(0.75rem + var(--bottombar-h))',
+                : chromeHidden
+                  ? undefined
+                  : 'calc(0.75rem + var(--bottombar-h))',
             }}
           >
-            <div className="pr-12">
+            <div>
               {isVideo && (
                 <div className="pb-2">
                   <VideoTimeline playerRef={playerRef} />
                 </div>
               )}
-              {viewerId && author?.id && <div className="pb-2">{cta()}</div>}
+              {viewerId && author?.id && (
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  {cta()}
+                  <div className="ml-auto">{actionRail}</div>
+                </div>
+              )}
               <p className="line-clamp-1 whitespace-pre-wrap text-[14px] leading-relaxed">
                 {caption || post.title}
               </p>
@@ -452,16 +476,7 @@ export function WorkCard({
                 </button>
               )}
             </div>
-            <div
-              className="absolute right-3 transition-all duration-200"
-              style={{
-                bottom: chromeHidden
-                  ? '0.75rem'
-                  : 'calc(0.75rem + var(--bottombar-h))',
-              }}
-            >
-              {actionRail}
-            </div>
+
           </div>
         </div>
 
@@ -480,13 +495,18 @@ export function WorkCard({
             <div className="flex h-full flex-col">
               {/* CTA sits ABOVE the text and does NOT scroll, so it is always
                   reachable whether the text needs to scroll or not. */}
-              <div className="shrink-0 px-4 pt-3 pr-16">
+              <div className="shrink-0 px-4 pt-3">
                 {isVideo && (
                   <div className="pb-2">
                     <VideoTimeline playerRef={playerRef} />
                   </div>
                 )}
-                {viewerId && author?.id && <div className="pb-2">{cta()}</div>}
+                {viewerId && author?.id && (
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    {cta()}
+                    <div className="ml-auto">{actionRail}</div>
+                  </div>
+                )}
               </div>
               {/* Only the TEXT (and Show less, directly beneath it) scrolls,
                   under the fixed CTA. */}
@@ -501,7 +521,6 @@ export function WorkCard({
                   Show less
                 </button>
               </div>
-              <div className="absolute bottom-3 right-3">{actionRail}</div>
             </div>
           )}
         </div>

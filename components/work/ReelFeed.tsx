@@ -167,7 +167,13 @@ export function ReelFeed({
   }, [])
 
   const frameStyle: React.CSSProperties = isDesktop
-    ? { width: '100%' }
+    ? {
+        width: '100%',
+        // <main> is a content-height flex item (lg:pt-0/lg:pb-0), so the reel
+        // must supply its own height. Without this the inner `h-full` scroller
+        // and the `h-full` cards resolve against auto height and collapse.
+        height: '100dvh',
+      }
     : {
         position: 'fixed',
         inset: 0,
@@ -175,7 +181,7 @@ export function ReelFeed({
       }
 
   return (
-    <div className="lg:static" style={frameStyle}>
+    <div className="relative lg:static" style={frameStyle}>
       <div
         ref={scrollRef}
         className="h-full w-full snap-y snap-mandatory overflow-y-auto overscroll-contain"
@@ -205,13 +211,15 @@ export function ReelFeed({
         )}
       </div>
 
-      {/* Up/down arrows hug the card's right edge. The inner box mirrors the
-          card's centered 9:16 height-bound sizing, so `right-0` lines up with
-          the frame edge; a negative offset pushes the buttons just outside.
-          Hidden on mobile where the card fills the width. */}
-      <div className="pointer-events-none absolute inset-y-0 left-0 right-0 hidden justify-center lg:flex">
-        <div className="relative h-full w-auto aspect-[9/16]">
-          <div className="pointer-events-none absolute inset-y-0 -right-14 flex flex-col items-center justify-center gap-3">
+      {/* Up/down arrows sit just OUTSIDE the card frame's right edge, beside
+          its vertical middle. The frame is centred and height-bound, so a
+          centred box of the SAME width and height aligns with it exactly; the
+          buttons hang off that box's right edge. Anchoring to the wrapper
+          (now `relative`) keeps this correct regardless of the sidebar width
+          on desktop - viewport math did not. Hidden on mobile. */}
+      <div className="pointer-events-none absolute inset-0 hidden items-center justify-center lg:flex">
+        <div className="pointer-events-none relative h-full aspect-[9/16]">
+          <div className="pointer-events-none absolute inset-y-0 -right-[86px] flex flex-col items-center justify-center gap-3">
         <button
           type="button"
           aria-label="Previous post"

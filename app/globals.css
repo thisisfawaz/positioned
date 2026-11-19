@@ -35,6 +35,15 @@
     --bottombar-h: calc(64px + env(safe-area-inset-bottom, 0px));
   }
 
+  /* Mobile-only chrome padding. Inline styles would beat the lg: classes and
+     leak onto desktop; a media query does not. */
+  @media (max-width: 1023px) {
+    .app-main {
+      padding-top: var(--topbar-h);
+      padding-bottom: var(--bottombar-h);
+    }
+  }
+
   /* Inversion: whites become near-black, near-black becomes off-white. */
   .dark {
     --background: #121218;
@@ -260,6 +269,28 @@ body {
 
 .scroll-hidden::-webkit-scrollbar {
   display: none;
+}
+
+/* MOBILE ONLY: no scrollbar anywhere - page root and every scrollable
+   element. Only the BAR is hidden; scrolling still works (touch, wheel,
+   keyboard). Firefox uses scrollbar-width; WebKit/Blink need the pseudo.
+   Desktop (>= 1024px) keeps its normal scrollbars. The .scroll-hidden
+   utility above is kept for explicit per-element intent. */
+@media (max-width: 1023px) {
+  html,
+  body,
+  * {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* legacy Edge/IE */
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar,
+  *::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, new Edge */
+    width: 0;
+    height: 0;
+  }
 }
 
 /* ==================================================================
