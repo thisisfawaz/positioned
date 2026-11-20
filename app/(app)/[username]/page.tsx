@@ -1,80 +1,80 @@
+'use client'
+
+import { use } from 'react'
 import { notFound } from 'next/navigation'
-import { prisma } from '@/lib/db'
-import { getCurrentUser } from '@/lib/auth/get-current-user'
+import { useCached } from '@/lib/client/use-cached'
 import { ProfileBody } from '@/components/profile/ProfileBody'
+import { Skeleton } from '@/components/ui/Skeleton'
 
-export const dynamic = 'force-dynamic'
+type ProfileResponse = {
+  user: { id: string; name: string; username: string | null }
+  prof: any
+  recruiter: any
+  isRecruiter: boolean
+  isOwn: boolean
+  onList: boolean
+  posts: any[]
+  roles: any[]
+  canFollow: boolean
+}
 
-export default async function ProfilePage({
+function ProfileSkeleton() {
+  return (
+    <div className="mx-auto w-full max-w-[980px] overflow-hidden bg-white lg:rounded-2xl">
+      <div className="px-3 pb-5 pt-3 sm:px-4">
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-24 w-24 rounded-[1.5rem] sm:h-28 sm:w-28" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <Skeleton className="h-6 w-40" />
+            <Skeleton className="h-3.5 w-28" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+        </div>
+        <div className="mt-4 space-y-2">
+          <Skeleton className="h-3 w-full" />
+          <Skeleton className="h-3 w-11/12" />
+          <Skeleton className="h-3 w-2/3" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2 px-3 pb-5 sm:grid-cols-3 sm:px-4">
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <Skeleton key={i} className="aspect-square w-full rounded-xl" />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export default function ProfilePage({
   params,
 }: {
   params: Promise<{ username: string }>
 }) {
-  const { username } = await params
+  const { username } = use(params)
 
-  const user = await prisma.user.findFirst({
-    where: { OR: [{ username }, { id: username }] },
-    include: {
-      professionalProfile: {
-        include: { skills: { include: { skill: true } }, experiences: true },
-      },
-      recruiterProfile: { include: { experiences: true } },
-    },
-  })
+  // Same client-cached pattern as the feed: repeat visits hit the memory cache
+  // and paint instantly, instead of re-querying the database every navigation.
+  const { data, error } = useCached<ProfileResponse>(`/api/profile/${username}`)
 
-  if (!user) notFound()
-
-  const currentUser = await getCurrentUser()
-  const isOwn = currentUser?.id === user.id
-  const prof = user.professionalProfile
-  const recruiter = user.recruiterProfile
-  const isRecruiter = user.role === 'RECRUITER'
-
-  const onList = currentUser
-    ? Boolean(
-        await prisma.follow.findUnique({
-          where: {
-            followerId_followingId: {
-              followerId: currentUser.id,
-              followingId: user.id,
-            },
-          },
-          select: { id: true },
-        })
-      )
-    : false
-
-  const posts = prof
-    ? await prisma.workPost.findMany({
-        where: { professionalId: prof.id, status: 'PUBLISHED' },
-        orderBy: { createdAt: 'desc' },
-        // The profile grid renders one image per post. Omitting this makes
-        // every tile fall back to a gradient with the title - the same silent
-        // break the feed notes warn about.
-        include: { mediaAssets: { orderBy: { createdAt: 'asc' }, take: 1 } },
-      })
-    : []
-
-  const roles = isRecruiter
-    ? await prisma.recruitment.findMany({
-        where: { recruiterId: user.id },
-        orderBy: { createdAt: 'desc' },
-      })
-    : []
+  if (error && (error as any)?.status === 404) notFound()
 
   return (
     <div className="flex-1 min-w-0 w-full px-0 pb-4 pt-3 sm:px-4 lg:px-6">
-      <ProfileBody
-        user={{ id: user.id, name: user.name, username: user.username }}
-        prof={prof}
-        recruiter={recruiter}
-        isRecruiter={isRecruiter}
-        isOwn={isOwn}
-        onList={onList}
-        posts={posts}
-        roles={roles}
-        canFollow={Boolean(currentUser)}
-      />
+      {!data ? (
+        <ProfileSkeleton />
+      ) : (
+        <ProfileBody
+          user={data.user}
+          prof={data.prof}
+          recruiter={data.recruiter}
+          isRecruiter={data.isRecruiter}
+          isOwn={data.isOwn}
+          onList={data.onList}
+          posts={data.posts}
+          roles={data.roles}
+          canFollow={data.canFollow}
+        />
+      )}
     </div>
   )
 }

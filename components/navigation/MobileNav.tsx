@@ -31,40 +31,30 @@ import { REEL_SCROLL_EVENT, type ReelScrollDetail } from '@/lib/client/reel-scro
  */
 
 export function MobileTopBar() {
-  // Hide on scroll down, reveal on scroll up. The bar stays in the layout with
-  // transform, so hiding it never causes a jump. A small threshold stops it
-  // flickering on tiny scroll deltas (rubber-banding, momentum jitter).
+  // Hide-on-scroll. RULE: the top bar only auto-hides on the FEED (the reel),
+  // where content runs edge-to-edge behind it. On every other page it stays put
+  // so the page keeps its header - scrolling a normal page must NOT slide it
+  // away. The feed scrolls inside its own container, so it reports direction
+  // via a custom event rather than moving window.scrollY.
   const [hidden, setHidden] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const lastY = useRef(0)
+  const pathname = usePathname()
+
+  // Leaving a page must never carry its hidden state over: navs remount on
+  // route change and previously inherited the reel's "hidden" event, so the
+  // bar stayed gone everywhere after visiting the feed or a profile reel.
+  useEffect(() => {
+    setHidden(false)
+  }, [pathname])
 
   useEffect(() => {
-    const onScroll = () => {
-      const y = window.scrollY
-      const delta = y - lastY.current
-
-      if (y < 64) {
-        setHidden(false)
-      } else if (delta > 6) {
-        setHidden(true)
-      } else if (delta < -6) {
-        setHidden(false)
-      }
-
-      lastY.current = y
-    }
-
-    // The feed scrolls inside its own container, so it reports direction via
-    // this event rather than moving window.scrollY.
     const onReelScroll = (e: Event) => {
       const detail = (e as CustomEvent<ReelScrollDetail>).detail
       setHidden(Boolean(detail?.hidden))
     }
 
-    window.addEventListener('scroll', onScroll, { passive: true })
     window.addEventListener(REEL_SCROLL_EVENT, onReelScroll as EventListener)
     return () => {
-      window.removeEventListener('scroll', onScroll)
       window.removeEventListener(REEL_SCROLL_EVENT, onReelScroll as EventListener)
     }
   }, [])
@@ -204,6 +194,11 @@ export function MobileBottomNav() {
   // Slide the tab bar away while the user is scrolling through the reel, then
   // bring it back on scroll-up or tap - same trigger as the top bar.
   const [hidden, setHidden] = useState(false)
+
+  // Reset on route change so a hidden bar from the reel never carries over.
+  useEffect(() => {
+    setHidden(false)
+  }, [pathname])
 
   useEffect(() => {
     const onReelScroll = (e: Event) => {

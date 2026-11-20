@@ -162,6 +162,11 @@ export function ReelFeed({
 
     return () => {
       clearIdle()
+      // Leaving the reel must restore the mobile bars. This component emits
+      // hidden=true while scrolling and nothing else ever emits false, so
+      // without this the next page mounted with the bars already gone.
+      barsHidden.current = false
+      emitReelScroll(false)
       container.removeEventListener('scroll', onScroll)
       container.removeEventListener('touchstart', onTouchStart)
       container.removeEventListener('touchend', onTouchEnd)
