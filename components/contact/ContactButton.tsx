@@ -99,7 +99,16 @@ export function ContactButton({
                   />
                 </div>
 
-                {state.error && <p className="text-sm text-red-600">{state.error}</p>}
+                {state.error === 'premium_required' ? (
+                  <div className="rounded-xl border border-line bg-surface-sunken p-3 text-sm">
+                    <p className="font-medium text-ink">This needs Positioned Premium.</p>
+                    <p className="mt-1 text-ink-muted">Premium lets you message recruiters and submit to their posts.
+                      <a href="/premium" className="ml-1 font-semibold text-brand hover:underline">See what Premium gives you</a>
+                    </p>
+                  </div>
+                ) : state.error ? (
+                  <p className="text-sm text-red-600">{state.error}</p>
+                ) : null}
 
                 <div className="flex justify-end gap-3">
                   <button

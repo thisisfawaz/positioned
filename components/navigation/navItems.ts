@@ -7,6 +7,7 @@ import {
   BellIcon,
   FolderIcon,
   EyeIcon,
+  DollarIcon,
   SettingsIcon,
 } from '@/components/icons'
 
@@ -31,5 +32,6 @@ export const NAV_ITEMS: NavItem[] = [
   { name: 'Notifications', href: '/profile/notifications', icon: BellIcon, badge: 'notifications' },
   { name: 'Responses', href: '/responses', icon: FolderIcon },
   { name: 'Boost Visibility', href: '/profile/visibility', icon: EyeIcon },
+  { name: 'Premium', href: '/premium', icon: DollarIcon },
   { name: 'Settings', href: '/settings', icon: SettingsIcon },
 ]

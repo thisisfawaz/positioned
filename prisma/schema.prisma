@@ -44,6 +44,8 @@ model User {
   /// except in the discounted 14- and 30-day bundles. Spending deducts from
   /// here and creates a Boost row with the resulting window.
   boostCredits        Int                 @default(0)
+  /// Premium (Professionals only). NULL/past = not premium. $2/month.
+  premiumUntil        DateTime?
 }
 
 model UserSettings {

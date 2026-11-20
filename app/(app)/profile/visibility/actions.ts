@@ -142,3 +142,53 @@ export async function startBoost(
   revalidatePath('/profile/visibility')
   redirect('/profile/visibility')
 }
+
+import { isUserPremium as __isUserPremium, PREMIUM_BOOST_SLOTS } from '@/lib/premium'
+
+export async function setPremiumBoostPosts(workPostIds: string[]) {
+  const user = await getCurrentUser()
+  if (!user) redirect('/auth/login')
+  if (!(await __isUserPremium(user.id))) {
+    return { error: 'premium_required' as const }
+  }
+  const ids = Array.from(new Set(workPostIds)).slice(0, PREMIUM_BOOST_SLOTS)
+  if (ids.length === 0) return { error: 'Select at least one post.' }
+
+  const now = new Date()
+  const until = (await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { premiumUntil: true },
+  }))!.premiumUntil!
+
+  let boost = await prisma.boost.findFirst({
+    where: { userId: user.id, status: 'ACTIVE', expiresAt: { gt: now } },
+    select: { id: true },
+  })
+  if (!boost) {
+    boost = await prisma.boost.create({
+      data: {
+        userId: user.id,
+        amount: 0,
+        currency: 'USD',
+        creditsSpent: 0,
+        weight: 1,
+        days: Math.max(1, Math.ceil((until.getTime() - now.getTime()) / 864e5)),
+        startsAt: now,
+        expiresAt: until,
+        status: 'ACTIVE',
+      },
+      select: { id: true },
+    })
+  }
+
+  const bid = boost.id
+  await prisma.$transaction([
+    prisma.boostPost.deleteMany({ where: { boostId: bid } }),
+    prisma.boostPost.createMany({
+      data: ids.map((workPostId) => ({ boostId: bid, workPostId })),
+    }),
+  ])
+
+  revalidatePath('/profile/visibility')
+  return { ok: true as const }
+}

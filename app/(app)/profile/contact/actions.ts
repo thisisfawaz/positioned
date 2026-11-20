@@ -1,3 +1,4 @@
+import { isPremiumActive } from '@/lib/premium'
 'use server'
 
 import { revalidatePath } from 'next/cache'
@@ -42,6 +43,12 @@ export async function sendContactRequest(
   const workPostId = String(formData.get('workPostId') || '') || null
   const subject = String(formData.get('subject') || '').trim()
   const message = String(formData.get('message') || '').trim()
+
+  // PREMIUM GATE: a PROFESSIONAL must be premium to message/submit to a recruiter.
+  if (user.role === 'PROFESSIONAL') {
+    const pu = await prisma.user.findUnique({ where: { id: user.id }, select: { premiumUntil: true } })
+    if (!isPremiumActive(pu?.premiumUntil)) return { error: 'premium_required' }
+  }
 
   if (!toUserId) return { error: 'Missing recipient.' }
   if (!subject) return { error: 'Subject is required.' }

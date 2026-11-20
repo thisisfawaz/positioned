@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getVisibilityAnalytics } from '@/services/queries/analytics'
-import { BoostForm } from '@/components/profile/BoostForm'
 import { WorkPerformanceList } from '@/components/profile/WorkPerformanceList'
-import { BuyBoostsButton } from '@/components/profile/BuyBoostsButton'
+import { PremiumBoostForm } from '@/components/profile/PremiumBoostForm'
+import { isPremiumActive } from '@/lib/premium'
 
 function Stat({ label, value, hint }: { label: string; value: number | string; hint?: string }) {
   return (
@@ -23,7 +23,8 @@ export default async function VisibilityPage() {
   // Boost costs are priced in CREDITS, not money. Currency is deliberately not
   // resolved here - see lib/pricing/boosts.ts. Money only enters the picture
   // when credits are bought, which is not built yet.
-  const boostCredits = user.boostCredits ?? 0
+  const premium = isPremiumActive((user as any).premiumUntil)
+  const selectedBoostIds = analytics?.activeBoost?.posts.map((p) => p.id) ?? []
 
   return (
     <div className="w-full px-3 pb-6 pt-2 sm:px-4 lg:pt-6">
@@ -41,7 +42,6 @@ export default async function VisibilityPage() {
           form - the form spends credits, this buys them. Opens the pricing
           popup; the popup is real even though checkout is not wired yet.
         */}
-          <BuyBoostsButton balance={boostCredits} />
         </div>
       </div>
 
@@ -89,37 +89,14 @@ export default async function VisibilityPage() {
               reaches the audience you cannot reach organically.
             </p>
 
-            {analytics.activeBoost ? (
-              <div className="mt-4 rounded-xl bg-surface-sunken p-4">
-                <div className="flex items-baseline justify-between gap-3">
-                  <h3 className="text-[14px] font-semibold text-ink">Your boost is running</h3>
-                  <span className="text-[13px] text-ink-subtle">
-                    ends {new Date(analytics.activeBoost.expiresAt).toLocaleDateString()}
-                  </span>
-                </div>
-                <p className="mt-2 text-[13px] text-ink-muted">
-                  Seen by{' '}
-                  <strong className="text-ink">{analytics.activeBoost.impressions}</strong>{' '}
-                  recruiter{analytics.activeBoost.impressions === 1 ? '' : 's'} so far.
-                </p>
-                <ul className="mt-2 space-y-1">
-                  {analytics.activeBoost.posts.map((p) => (
-                    <li key={p.id} className="truncate text-[13px] text-ink">
-                      · {p.title}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : (
-              <div className="mt-4">
-                <BoostForm
-                  posts={analytics.perPost
-                    .filter((p) => p.status === 'PUBLISHED')
-                    .map((p) => ({ id: p.id, title: p.title, image: p.image }))}
-                  boostCredits={boostCredits}
-                />
-              </div>
-            )}
+            <div className="mt-4">
+              <PremiumBoostForm
+                posts={analytics.perPost.filter((p) => p.status === 'PUBLISHED').map((p) => ({ id: p.id, title: p.title, image: p.image }))}
+                selected={selectedBoostIds}
+                premium={premium}
+              />
+            </div>
+
           </section>
         </>
       )}
