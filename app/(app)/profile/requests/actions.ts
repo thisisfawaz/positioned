@@ -195,3 +195,77 @@ export async function fulfilDocumentRequest(
   revalidatePath(`/requests/${requestId}`)
   return { ok: true, requestId }
 }
+
+/**
+ * PREMIUM submit path for a professional responding to a recruiter's post.
+ *
+ * Combines create + fulfil in ONE call so the CTA can open a form FIRST (which
+ * is what the product wants) instead of silently creating a PENDING request on
+ * click. Premium is enforced here, server-side, so it cannot be bypassed.
+ */
+export async function submitPortfolioResponse(
+  _prevState: RequestActionState,
+  formData: FormData
+): Promise<RequestActionState> {
+  const user = await getCurrentUser()
+  if (!user) return { error: 'You must be signed in.' }
+
+  if (user.role === 'PROFESSIONAL') {
+    const pu = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { premiumUntil: true },
+    })
+    const { isPremiumActive } = await import('@/lib/premium')
+    if (!isPremiumActive(pu?.premiumUntil)) return { error: 'premium_required' }
+  }
+
+  const postId = String(formData.get('postId') || '')
+  const cvUrl = String(formData.get('cvUrl') || '').trim()
+  const portfolioUrl = String(formData.get('portfolioUrl') || '').trim()
+  if (!postId) return { error: 'Missing post.' }
+
+  const post = await prisma.workPost.findUnique({
+    where: { id: postId },
+    select: { id: true, desiredResponse: true, recruiterProfileId: true },
+  })
+  if (!post) return { error: 'That post no longer exists.' }
+  if (!DOCUMENT_RESPONSES.includes(post.desiredResponse)) {
+    return { error: 'This post is not asking for documents.' }
+  }
+
+  const validUrl = (u: string) => /^https?:\/\//i.test(u)
+  if (cvUrl && !validUrl(cvUrl)) return { error: 'CV link must start with http.' }
+  if (portfolioUrl && !validUrl(portfolioUrl)) return { error: 'Portfolio link must start with http.' }
+
+  const wantsCv = post.desiredResponse === 'CV' || post.desiredResponse === 'CV_AND_PORTFOLIO'
+  const wantsPortfolio =
+    post.desiredResponse === 'PORTFOLIO' || post.desiredResponse === 'CV_AND_PORTFOLIO'
+  if (wantsCv && !cvUrl) return { error: 'A CV link is required.' }
+  if (wantsPortfolio && !portfolioUrl) return { error: 'A portfolio link is required.' }
+
+  try {
+    const row = await prisma.documentRequest.upsert({
+      where: { postId_requesterId: { postId, requesterId: user.id } },
+      create: {
+        postId,
+        requesterId: user.id,
+        ownerId: user.id,
+        response: post.desiredResponse,
+        status: 'FULFILLED',
+        cvUrl: wantsCv ? cvUrl : null,
+        portfolioUrl: wantsPortfolio ? portfolioUrl : null,
+      },
+      update: {
+        status: 'FULFILLED',
+        cvUrl: wantsCv ? cvUrl : undefined,
+        portfolioUrl: wantsPortfolio ? portfolioUrl : undefined,
+      },
+      select: { id: true },
+    })
+    revalidatePath('/responses')
+    return { ok: true, requestId: row.id }
+  } catch (err) {
+    console.error('submitPortfolioResponse failed:', err)
+    return { error: 'Failed to submit. Please try again.' }
+  }
+}

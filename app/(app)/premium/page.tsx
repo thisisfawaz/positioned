@@ -16,7 +16,7 @@ export default async function PremiumPage() {
   const features = [
     'Message recruiters directly',
     'Submit your work as a response to recruiter posts',
-    `Boost ${PREMIUM_BOOST_SLOTS} of your best posts every month — rotate them anytime`,
+    'Boost your visibility for more recruiters to find you',
   ]
 
   return (

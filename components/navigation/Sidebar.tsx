@@ -76,7 +76,7 @@ export function Sidebar() {
                 role="tooltip"
                 className="pointer-events-none absolute left-full z-50 ml-2 whitespace-nowrap rounded-lg border border-line bg-brand-light px-2.5 py-1.5 text-[12px] font-medium text-ink opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100"
               >
-                {item.name}
+                {item.tooltip ?? item.name}
               </span>
             </Link>
           )

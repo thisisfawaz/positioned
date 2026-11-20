@@ -1,5 +1,8 @@
 'use server'
 
+import { PREMIUM_BOOST_SLOTS } from '@/lib/premium'
+import { isUserPremium as __isUserPremium } from '@/lib/premium-server'
+
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
@@ -143,7 +146,6 @@ export async function startBoost(
   redirect('/profile/visibility')
 }
 
-import { isUserPremium as __isUserPremium, PREMIUM_BOOST_SLOTS } from '@/lib/premium'
 
 export async function setPremiumBoostPosts(workPostIds: string[]) {
   const user = await getCurrentUser()

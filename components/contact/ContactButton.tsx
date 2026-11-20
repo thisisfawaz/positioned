@@ -34,7 +34,7 @@ export function ContactButton({
         onClick={() => setOpen(true)}
         className="btn-primary text-sm px-4 py-2"
       >
-        Contact
+        Get in touch
       </button>
 
       {open && (

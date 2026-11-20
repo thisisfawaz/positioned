@@ -117,6 +117,15 @@ export default function HomePage() {
     }
   })
 
+  // NEVER DROP a recruiter post. The interleave only fills every AD_INTERVAL-th
+  // professional slot, so when there are fewer professionals than that (or more
+  // recruiter posts than slots), the leftovers were silently lost - a newly
+  // created recruiter post never reached the feed. Append any that went unused.
+  while (adCursor < recruiterPosts.length) {
+    interleaved.push(recruiterPosts[adCursor])
+    adCursor += 1
+  }
+
   type FeedItem = { kind: 'work'; id: string; createdAt: string; item: any }
 
   const feed: FeedItem[] = interleaved.map((p) => ({

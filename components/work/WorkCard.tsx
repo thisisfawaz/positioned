@@ -236,8 +236,11 @@ export function WorkCard({
   //   MESSAGE                        -> opens the same contact modal the
   //                                     profile uses. Messaging is ONE path,
   //                                     not a second implementation.
-  const isDocumentRequest =
+  const isDocResponse =
     response === 'CV' || response === 'PORTFOLIO' || response === 'CV_AND_PORTFOLIO'
+  const viewerIsRecruiter = (viewerSide ?? 'PROFESSIONAL') === 'RECRUITER'
+  const isDocumentRequest =
+    isDocResponse && (authorSide === 'RECRUITER' || viewerIsRecruiter)
   const isApply = response === 'APPLY'
   const isMessage = response === 'MESSAGE'
 
@@ -252,7 +255,7 @@ export function WorkCard({
         <span className="group relative inline-block">
           <span
             aria-disabled="true"
-            className="inline-flex cursor-not-allowed items-center rounded-full bg-brand/40 px-3.5 py-1.5 text-[13px] font-semibold text-white"
+            className="btn-primary text-sm px-4 py-2 cursor-not-allowed opacity-60"
           >
             {ctaLabel}
           </span>
@@ -270,7 +273,7 @@ export function WorkCard({
           pendingRequestId={pendingRequestId}
           isFulfilled={documentsFulfilled}
           response={response}
-          isSupplier={(viewerSide ?? 'PROFESSIONAL') === authorSide}
+          isSupplier={(viewerSide ?? 'PROFESSIONAL') !== authorSide}
         />
       )
     }
@@ -280,13 +283,15 @@ export function WorkCard({
           href={post.applyUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center rounded-full bg-white px-3.5 py-1.5 text-[13px] font-semibold text-ink"
+          className="btn-primary text-sm px-4 py-2"
         >
           {ctaLabel} ↗
         </a>
       )
     }
-    if (isMessage) {
+    // A doc-request post the viewer cannot act on (e.g. a professional viewing
+    // another professional's CV request) falls back to a plain Message CTA.
+    if (isMessage || isDocResponse) {
       return <ContactButton toUserId={author.id} toName={name} workPostId={post.id} />
     }
     return null

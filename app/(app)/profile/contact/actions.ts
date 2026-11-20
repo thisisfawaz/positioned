@@ -1,5 +1,6 @@
-import { isPremiumActive } from '@/lib/premium'
 'use server'
+
+import { isPremiumActive } from '@/lib/premium'
 
 import { revalidatePath } from 'next/cache'
 import { getCurrentUser } from '@/lib/auth/get-current-user'

@@ -15,6 +15,7 @@ export type NavItem = {
   name: string
   href: string
   icon: (p: { className?: string }) => React.ReactNode
+  tooltip?: string
   badge?: 'messages' | 'notifications'
 }
 
@@ -32,6 +33,6 @@ export const NAV_ITEMS: NavItem[] = [
   { name: 'Notifications', href: '/profile/notifications', icon: BellIcon, badge: 'notifications' },
   { name: 'Responses', href: '/responses', icon: FolderIcon },
   { name: 'Boost Visibility', href: '/profile/visibility', icon: EyeIcon },
-  { name: 'Premium', href: '/premium', icon: DollarIcon },
+  { name: 'Premium', href: '/premium', icon: DollarIcon, tooltip: 'Go Premium' },
   { name: 'Settings', href: '/settings', icon: SettingsIcon },
 ]
