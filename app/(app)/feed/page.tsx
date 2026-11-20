@@ -5,12 +5,16 @@ import { useSearchParams } from 'next/navigation'
 import { useCached } from '@/lib/client/use-cached'
 import { useUser } from '@/lib/client/use-user'
 import { ReelFeed } from '@/components/work/ReelFeed'
-import { Skeleton } from '@/components/ui/Skeleton'
+import { FeedSkeleton } from '@/components/work/FeedSkeleton'
 import { WorkComposerModal } from '@/components/work/WorkComposerModal'
 import { RecruitmentComposerModal } from '@/components/recruitments/RecruitmentComposerModal'
 import { initialsOf } from '@/lib/client/social'
 import { DEMO_POSTS } from '@/lib/client/demo-posts'
 import { DEMO_POSTS_2 } from '@/lib/client/demo-posts-2'
+import {
+  subscribePendingPost,
+  takePendingPost,
+} from '@/lib/client/pending-post'
 
 export default function HomePage() {
   const { user } = useUser()
@@ -34,6 +38,23 @@ export default function HomePage() {
   // data, then stop - otherwise every re-render would yank the user back.
   const searchParams = useSearchParams()
   const deepLinkPostId = searchParams?.get('post') ?? null
+
+  // A post published moments ago. Set by the composer, consumed here once so
+  // it appears at the TOP of the feed without waiting for the refetch.
+  const [justPublished, setJustPublished] = useState<any | null>(null)
+  useEffect(() => {
+    const drain = () => {
+      const p = takePendingPost()
+      if (p) setJustPublished(p)
+    }
+    drain()
+    return subscribePendingPost(drain)
+  }, [])
+
+  // A STABLE shuffle seed per mount. Without this the order would re-shuffle
+  // on every render (SWR updates, modal toggles), which makes posts jump while
+  // the user is scrolling.
+  const [shuffleSeed] = useState(() => Math.random())
 
 
   const composerPresets: { label: string; value: string }[] = isRecruiter
@@ -71,9 +92,18 @@ export default function HomePage() {
   const byNewest = (a: any, b: any) =>
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
 
+  // RANDOMISED, but deterministically for this mount: a seeded sort keeps the
+  // order stable across re-renders while still differing from a strict
+  // newest-first list. Boosted post is still hoisted below.
+  const seededRank = (id: string) => {
+    let h = 0
+    for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 100000
+    return ((h / 100000 + shuffleSeed) % 1)
+  }
+
   const professionalPosts = allPosts
     .filter((p) => !p.recruiterProfile)
-    .sort(byNewest)
+    .sort((a, b) => seededRank(a.id) - seededRank(b.id))
   const recruiterPosts = allPosts.filter((p) => p.recruiterProfile).sort(byNewest)
 
   const interleaved: any[] = []
@@ -95,6 +125,20 @@ export default function HomePage() {
     createdAt: p.createdAt,
     item: p,
   }))
+
+  // JUST-PUBLISHED goes first: the author should see their own post at the top
+  // the instant it is created.
+  if (justPublished) {
+    const rest = feed.filter((f) => f.id !== justPublished.id)
+    rest.unshift({
+      kind: 'work' as const,
+      id: justPublished.id,
+      createdAt: justPublished.createdAt ?? new Date().toISOString(),
+      item: justPublished,
+    })
+    feed.length = 0
+    feed.push(...rest)
+  }
 
   const boostedPostId = data?.boostedPostId ?? null
   if (boostedPostId) {
@@ -119,16 +163,20 @@ export default function HomePage() {
     />
 
     {/* The reel itself is shared with /[username]/reels - one implementation. */}
-    <ReelFeed
-      posts={feed}
-      viewerId={data?.viewerId}
-      viewerRole={data?.viewerRole}
-      followingIds={followingIds}
-      pendingByPost={pendingByPost}
-      fulfilledPostIds={fulfilledPostIds}
-      focusPostId={deepLinkPostId}
-      emptyMessage={!data ? 'Loading…' : 'Nothing here yet. Share something you are working on.'}
-    />
+    {!data ? (
+      <FeedSkeleton />
+    ) : (
+      <ReelFeed
+        posts={feed}
+        viewerId={data?.viewerId}
+        viewerRole={data?.viewerRole}
+        followingIds={followingIds}
+        pendingByPost={pendingByPost}
+        fulfilledPostIds={fulfilledPostIds}
+        focusPostId={deepLinkPostId}
+        emptyMessage="Nothing here yet. Share something you are working on."
+      />
+    )}
 
     </>
   )

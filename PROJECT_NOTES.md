@@ -233,6 +233,15 @@ done, delete it here and record the outcome in the Change Log.
 
 ## Change Log
 
+### 2026-11-20 - Instant post, 3s auto-hide chrome, randomized Explore, fitted skeletons
+
+- INSTANT POST: `createWorkPost` now re-reads the created row with the SAME relations `/api/home` returns and returns it as `state.createdPost`. `NewWorkForm` calls `setPendingPost(state.createdPost)` on success (it was NEVER called before - the whole pending-post mechanism was dead). The feed's existing `justPublished` logic then prepends it, so a new post appears at the TOP with no refetch. `clearCached('/api/home')` still runs, so the refetch simply confirms it.
+- 3s AUTO-HIDE (mobile): `ReelFeed` gained an idle timer. 3s after the user settles on a post (scroll-stopped), it emits hidden=true so both bars slide away; any scroll cancels/re-arms it and normal scroll-driven reveal takes over. Skipped on desktop (no overlaid bars). Implemented with an `isDesktopRef` + `armIdle`/`clearIdle` refs inside the existing scroll effect.
+- RANDOMIZED EXPLORE: `ExplorePage` shuffles the fetched items with a per-mount seed (stable across re-renders, differs per visit). Feed already had a seeded shuffle for professional posts - left intact. NOTE: ExploreGrid still APPENDS additional pages in server (newest-first) order; only the first batch is shuffled.
+- SKELETONS FIT THE DESIGN: feed showed the literal text "Loading…" - replaced with a reel-shaped `FeedSkeleton` (media frame + overlaid author/caption), rendered while `/api/home` has no data. Explore's inline skeleton used the dead `bg-gray-200` class - now uses `Skeleton` and mirrors `PostTileGrid` (columns-2/3/4, alternating aspect-square / aspect-[3/4]). Added route `loading.tsx` for `/list`, `/messages`, `/responses`, `/trending`, each matching its real page's wrapper, title, and row/card anatomy.
+- FIXED A PRE-EXISTING TYPE ERROR: `subscribePendingPost` returned `() => listeners.delete(fn)` (boolean), which is not a valid `EffectCallback` destructor. Now returns a void arrow. `npx tsc --noEmit` was failing on `app/(app)/feed/page.tsx:83` before this.
+- VERIFIED: `npx tsc --noEmit` clean. NOT verified in a browser (skeleton visuals, the 3s timing feel, and instant-post appearance all need a real look).
+
 ### 2026-11-19 - Profile photos (both roles), unsaved-changes guard, modal fixes, bio/name layout
 
 - PROFILE PHOTO UPLOAD: new `components/settings/ProfilePhotoPicker.tsx` uploads via the EXISTING `/api/upload` route (same MIME + size validation) and writes the returned `/uploads/...` path into a hidden `profilePhoto` field. Preview + Change/Remove, inline errors, initials fallback.

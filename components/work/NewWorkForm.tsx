@@ -7,6 +7,7 @@ import {
   updateWorkPost,
   type WorkFormState,
 } from '@/app/(app)/profile/work/actions'
+import { setPendingPost } from '@/lib/client/pending-post'
 import { useUser } from '@/lib/client/use-user'
 import {
   responsesForSide,
@@ -164,8 +165,12 @@ export function WorkForm({
   // A successful create returns { ok: true } instead of redirecting. Tell the
   // opener so it can clear the cached feed and close the modal.
   useEffect(() => {
-    if (!isEdit && state.ok) onPublished?.()
-  }, [isEdit, state.ok, onPublished])
+    if (isEdit || !state.ok) return
+    // Hand the freshly created post to the feed so it appears at the TOP the
+    // instant the modal closes - no waiting for the `/api/home` refetch.
+    if (state.createdPost) setPendingPost(state.createdPost)
+    onPublished?.()
+  }, [isEdit, state.ok, state.createdPost, onPublished])
 
   // Values echoed back after a failed save, so a validation error does not wipe
   // everything the user typed.

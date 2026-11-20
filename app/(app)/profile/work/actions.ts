@@ -61,6 +61,12 @@ export type WorkFormState = {
   /** Id of the post just created, returned instead of redirecting. */
   createdId?: string
   /**
+   * The just-created post, shaped like a `/api/home` row (media + owner
+   * relations included) so the composer can hand it to the feed and it shows
+   * at the top IMMEDIATELY, without waiting for a refetch.
+   */
+  createdPost?: any
+  /**
    * Echoed back on failure so the form can repopulate.
    *
    * Uncontrolled inputs are RESET by React after every server action, success
@@ -232,6 +238,7 @@ export async function createWorkPost(
   // the judge of whether a claim is true, not a string match.
 
   let createdId: string
+  let createdPost: any = null
   try {
     const created = await prisma.workPost.create({
       data: {
@@ -259,6 +266,22 @@ export async function createWorkPost(
       },
     })
     createdId = created.id
+
+    // Re-read with the SAME relations `/api/home` returns, so the object the
+    // feed prepends renders exactly like a fetched post (media, author).
+    createdPost = await prisma.workPost.findUnique({
+      where: { id: created.id },
+      include: {
+        mediaAssets: { orderBy: { createdAt: 'asc' }, take: 1 },
+        professional: {
+          include: {
+            user: true,
+            skills: { include: { skill: true } },
+          },
+        },
+        recruiterProfile: { include: { user: true } },
+      },
+    })
   } catch (err) {
     console.error('Failed to create work post:', err)
     return {
@@ -276,7 +299,7 @@ export async function createWorkPost(
   // away is wrong - the author should see their post appear in place. The
   // client clears its cache and refetches; `createdId` comes back so the
   // caller can act on it if it ever needs to.
-  return { ok: true, createdId }
+  return { ok: true, createdId, createdPost }
 }
 
 export async function updateWorkPost(

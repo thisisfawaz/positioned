@@ -17,9 +17,10 @@ import { NAV_ITEMS } from '@/components/navigation/navItems'
  * user pinned to the bottom. Icons only (no labels) below `xl`.
  */
 
-export function Sidebar({ role }: { role: string }) {
+export function Sidebar() {
   const { user } = useUser()
   const pathname = usePathname()
+  const role = user?.role ?? 'PROFESSIONAL'
   const isRecruiter = role === 'RECRUITER'
 
   const { data: unread } = useCached<{ totalUnread: number }>('/api/unread')
@@ -38,7 +39,7 @@ export function Sidebar({ role }: { role: string }) {
   return (
     <aside className="sticky top-0 z-40 hidden h-screen w-[68px] flex-shrink-0 flex-col bg-white px-3 py-6 lg:flex">
       {/* Brand */}
-      <Link href="/feed" className="mb-8 flex items-center gap-2.5 px-1">
+      <Link href="/feed" prefetch className="mb-8 flex items-center gap-2.5 px-1">
         <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-brand text-[17px] font-bold text-white shadow-[0_4px_12px_rgba(91,61,245,0.24)]">
           P
         </span>
@@ -54,6 +55,7 @@ export function Sidebar({ role }: { role: string }) {
             <Link
               key={item.name}
               href={item.href}
+              prefetch
               aria-label={item.name}
               className={`group relative flex items-center justify-center rounded-xl px-3 py-2.5 transition-colors ${
                 active
@@ -99,6 +101,7 @@ export function Sidebar({ role }: { role: string }) {
           rail keeps one for narrow widths where that column is hidden. */}
       <Link
         href="/explore"
+        prefetch
         title="Search"
         className="mt-2 flex items-center gap-3 rounded-xl px-3 py-2.5 text-ink-muted transition-colors hover:bg-surface-sunken hover:text-ink xl:hidden"
       >

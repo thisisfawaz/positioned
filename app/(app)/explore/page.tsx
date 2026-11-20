@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { ExploreGrid, type GridItem } from '@/components/explore/ExploreGrid'
+import { Skeleton } from '@/components/ui/Skeleton'
 import { SearchIcon, SlidersIcon } from '@/components/icons'
 
 const CATEGORIES = ['All', 'Design', 'Technology', 'Business', 'Education', 'Marketing', 'Engineering']
@@ -18,6 +19,9 @@ const CATEGORIES = ['All', 'Design', 'Technology', 'Business', 'Education', 'Mar
 export default function ExplorePage() {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('All')
+  // A stable seed per mount so the grid is RANDOMISED on load but does not
+  // re-shuffle on every render (search typing, SWR revalidation).
+  const [seed] = useState(() => Math.random())
 
   // SCROLL RESTORATION AND INFINITE LOADING LIVE IN ExploreGrid NOW. The old
   // effect here restored immediately on mount, BEFORE the grid had re-expanded,
@@ -47,8 +51,16 @@ export default function ExplorePage() {
     if (category !== 'All') {
       list = list.filter((i) => (i.title ?? '').toLowerCase().includes(category.toLowerCase()))
     }
+    // RANDOMISE the order for this mount. Seeded so it is stable across
+    // re-renders while still differing from the server's newest-first order.
+    const rank = (id: string) => {
+      let h = 0
+      for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 100000
+      return (h / 100000 + seed) % 1
+    }
+    list = [...list].sort((a, b) => rank(a.id) - rank(b.id))
     return { items: list, cursor: data?.nextCursor ?? null }
-  }, [data, query, category])
+  }, [data, query, category, seed])
 
   return (
     <div className="w-full pb-6">
@@ -107,13 +119,16 @@ export default function ExplorePage() {
       <div className="mt-4 px-3 sm:px-4">
         {isLoading ? (
           <div className="columns-2 gap-3 sm:columns-3 lg:columns-4">
-            {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
-              <div
-                key={i}
-                className="mb-3 animate-pulse rounded-xl bg-gray-200"
-                style={{ height: i % 3 === 0 ? 200 : 150 }}
-              />
-            ))}
+            {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
+              const tall = i % 5 === 0 || i % 7 === 0
+              return (
+                <div key={i} className="mb-3 break-inside-avoid overflow-hidden rounded-xl">
+                  <Skeleton
+                    className={`w-full rounded-xl ${tall ? 'aspect-[3/4]' : 'aspect-square'}`}
+                  />
+                </div>
+              )
+            })}
           </div>
         ) : items.length === 0 ? (
           <div className="py-16 text-center">

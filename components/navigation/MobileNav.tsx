@@ -86,7 +86,7 @@ export function MobileTopBar() {
           >
             <MenuIcon className="h-[21px] w-[21px]" />
           </button>
-          <Link href="/feed" className="flex items-center gap-2">
+          <Link href="/feed" prefetch className="flex items-center gap-2">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-[15px] font-bold text-white">
               P
             </span>
@@ -97,6 +97,7 @@ export function MobileTopBar() {
         <div className="flex items-center gap-1">
           <Link
             href="/explore"
+            prefetch
             aria-label="Search"
             className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-muted"
           >
@@ -143,7 +144,7 @@ function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void })
       <div className="absolute inset-0 bg-ink/30 backdrop-blur-sm" onClick={onClose} />
       <div className="absolute inset-y-0 left-0 flex w-[280px] max-w-[82vw] flex-col bg-surface shadow-xl">
         <div className="flex items-center justify-between border-b border-line px-4 py-3">
-          <Link href="/feed" onClick={onClose} className="flex items-center gap-2">
+          <Link href="/feed" prefetch onClick={onClose} className="flex items-center gap-2">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-[15px] font-bold text-white">
               P
             </span>
@@ -168,6 +169,7 @@ function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void })
               <Link
                 key={item.name}
                 href={item.href}
+                prefetch
                 onClick={onClose}
                 className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium transition-colors ${
                   active
@@ -197,7 +199,7 @@ function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void })
   )
 }
 
-export function MobileBottomNav({ role }: { role: string; userName?: string }) {
+export function MobileBottomNav() {
   const pathname = usePathname()
   // Slide the tab bar away while the user is scrolling through the reel, then
   // bring it back on scroll-up or tap - same trigger as the top bar.
@@ -226,12 +228,12 @@ export function MobileBottomNav({ role }: { role: string; userName?: string }) {
       className={`fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-line bg-white pb-[env(safe-area-inset-bottom)] transition-transform duration-200 lg:hidden ${hidden ? 'translate-y-full' : 'translate-y-0'}`}
       style={{ height: 'var(--bottombar-h)' }}
     >
-      <Link href="/feed" className={tabClass('/feed')}>
+      <Link href="/feed" prefetch className={tabClass('/feed')}>
         <HomeIcon className="h-[21px] w-[21px]" />
         Home
       </Link>
 
-      <Link href="/explore" className={tabClass('/explore')}>
+      <Link href="/explore" prefetch className={tabClass('/explore')}>
         <CompassIcon className="h-[21px] w-[21px]" />
         Explore
       </Link>
@@ -245,12 +247,12 @@ export function MobileBottomNav({ role }: { role: string; userName?: string }) {
         </span>
       </CreatePostTrigger>
 
-      <Link href="/messages" className={tabClass('/messages')}>
+      <Link href="/messages" prefetch className={tabClass('/messages')}>
         <ChatIcon className="h-[21px] w-[21px]" />
         Messages
       </Link>
 
-      <Link href="/profile/notifications" className={tabClass('/profile/notifications')}>
+      <Link href="/profile/notifications" prefetch className={tabClass('/profile/notifications')}>
         <BellIcon className="h-[21px] w-[21px]" />
         Notifications
       </Link>

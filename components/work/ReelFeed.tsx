@@ -46,6 +46,30 @@ export function ReelFeed({
   const [chromeHidden, setChromeHidden] = useState(false)
   // Distinguish a tap (toggle chrome) from a drag (scroll).
   const touchStart = useRef<{ x: number; y: number } | null>(null)
+  // After the user stays on a post for 3s (no scrolling), auto-hide the mobile
+  // chrome so the post is seen in full. Any scroll cancels/restarts this and
+  // normal scroll-driven reveal takes back over.
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isDesktopRef = useRef(false)
+
+  const clearIdle = () => {
+    if (idleTimer.current) {
+      clearTimeout(idleTimer.current)
+      idleTimer.current = null
+    }
+  }
+
+  const armIdle = () => {
+    clearIdle()
+    // Desktop has no overlaid bars to hide - skip there.
+    if (isDesktopRef.current) return
+    idleTimer.current = setTimeout(() => {
+      if (barsHidden.current) return
+      barsHidden.current = true
+      setChromeHidden(true)
+      emitReelScroll(true)
+    }, 3000)
+  }
 
   /** Step exactly one card up or down. Native snap snaps the rest. */
   const scrollByCard = (dir: 1 | -1) => {
@@ -80,6 +104,10 @@ export function ReelFeed({
     let lastTop = container.scrollTop
 
     const onScroll = () => {
+      // Any scroll resumes normal behaviour: cancel the pending auto-hide and
+      // re-arm it once the user settles again.
+      armIdle()
+
       const top = container.scrollTop
       const delta = top - lastTop
       lastTop = top
@@ -101,6 +129,10 @@ export function ReelFeed({
     }
 
     container.addEventListener('scroll', onScroll, { passive: true })
+
+    // Start the idle countdown on mount so simply LOOKING at the first post
+    // (without touching it) also hides the bars after 3s.
+    armIdle()
 
     // Tap-to-reveal: a tap that is NOT a drag and NOT on a control toggles the
     // chrome. This is the standard reels behaviour so users who stopped
@@ -129,10 +161,12 @@ export function ReelFeed({
     container.addEventListener('touchend', onTouchEnd, { passive: true })
 
     return () => {
+      clearIdle()
       container.removeEventListener('scroll', onScroll)
       container.removeEventListener('touchstart', onTouchStart)
       container.removeEventListener('touchend', onTouchEnd)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const viewerSide =
@@ -160,7 +194,10 @@ export function ReelFeed({
   const [isDesktop, setIsDesktop] = useState(false)
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 1024px)')
-    const apply = () => setIsDesktop(mq.matches)
+    const apply = () => {
+      setIsDesktop(mq.matches)
+      isDesktopRef.current = mq.matches
+    }
     apply()
     mq.addEventListener('change', apply)
     return () => mq.removeEventListener('change', apply)
