@@ -8,10 +8,15 @@ export function ContactButton({
   toUserId,
   toName,
   workPostId,
+  label = 'Get in touch',
+  shape,
 }: {
   toUserId: string
   toName: string
   workPostId?: string
+  label?: string
+  /** Mirror another button's shape (e.g. 'profile') instead of btn-primary. */
+  shape?: 'profile'
 }) {
   const [open, setOpen] = useState(false)
   const [state, formAction, pending] = useActionState<ContactFormState, FormData>(
@@ -32,9 +37,9 @@ export function ContactButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="btn-primary text-sm px-4 py-2"
+        className={shape === 'profile' ? 'rounded-md bg-brand px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-dark' : 'btn-primary text-sm px-4 py-2'}
       >
-        Get in touch
+        {label}
       </button>
 
       {open && (

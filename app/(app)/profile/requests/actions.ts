@@ -5,6 +5,17 @@ import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { prisma } from '@/lib/db'
 import type { ResponseType } from '@prisma/client'
 
+
+// A PROFESSIONAL must be premium to respond to a recruiter's post (submit CV/
+// portfolio). Enforced in EVERY response path, not just submitPortfolioResponse -
+// requestDocuments and fulfilDocumentRequest were reachable ungated.
+async function requiresPremium(userId: string, role: string): Promise<boolean> {
+  if (role !== 'PROFESSIONAL') return false
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { premiumUntil: true } })
+  const { isPremiumActive } = await import('@/lib/premium')
+  return !isPremiumActive(u?.premiumUntil)
+}
+
 export type RequestActionState = {
   ok?: boolean
   error?: string
@@ -58,6 +69,7 @@ export async function requestDocuments(
 ): Promise<RequestActionState> {
   const user = await getCurrentUser()
   if (!user) return { error: 'You must be signed in.' }
+  if (await requiresPremium(user.id, user.role)) return { error: 'premium_required' }
 
   const postId = String(formData.get('postId') || '')
   if (!postId) return { error: 'Missing post.' }
@@ -138,6 +150,7 @@ export async function fulfilDocumentRequest(
 ): Promise<RequestActionState> {
   const user = await getCurrentUser()
   if (!user) return { error: 'You must be signed in.' }
+  if (await requiresPremium(user.id, user.role)) return { error: 'premium_required' }
 
   const requestId = String(formData.get('requestId') || '')
   if (!requestId) return { error: 'Missing request.' }

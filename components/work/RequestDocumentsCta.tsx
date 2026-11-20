@@ -140,7 +140,11 @@ export function RequestDocumentsCta({
       >
         {pending ? 'Sending…' : label}
       </button>
-      {state.error && <span className="ml-2 text-[12px] text-red-600">{state.error}</span>}
+      {state.error === 'premium_required' ? (
+        <span className="ml-2 text-[12px] font-medium text-brand">Premium required — <a href="/premium" className="underline">See Premium</a></span>
+      ) : state.error ? (
+        <span className="ml-2 text-[12px] text-red-600">{state.error}</span>
+      ) : null}
     </form>
   )
 }

@@ -98,10 +98,7 @@ export function ProfileBody({
             </>
           ) : (
             <>
-              {prof && (
-                <SaveProfessionalButton professionalId={user.id} initialSaved={false} />
-              )}
-              {prof && <ContactButton toUserId={user.id} toName={user.name} />}
+              {prof && <ContactButton toUserId={user.id} toName={user.name} label="Message" shape="profile" />}
               {canFollow && (
                 <FollowPostsButton userId={user.id} initialFollowing={onList} />
               )}

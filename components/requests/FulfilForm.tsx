@@ -112,7 +112,13 @@ export function FulfilForm({
         </div>
       )}
 
-      {state.error && (
+      {state.error === 'premium_required' && (
+        <div className="rounded-xl border border-line bg-surface-sunken p-3 text-sm">
+          <p className="font-medium text-ink">This needs Positioned Premium.</p>
+          <a href="/premium" className="mt-1 inline-block font-semibold text-brand hover:underline">See what Premium gives you</a>
+        </div>
+      )}
+      {state.error && state.error !== 'premium_required' && (
         <div className="border border-red-200 bg-red-50 p-4 rounded-md">
           <p className="text-sm font-medium text-red-700">{state.error}</p>
         </div>
