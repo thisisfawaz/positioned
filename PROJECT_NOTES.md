@@ -248,6 +248,18 @@ done, delete it here and record the outcome in the Change Log.
 
 ## Change Log
 
+### 2026-11-20 - Premium fixes: submit modal, CTA rules, recruiter feed, unified pills
+
+- SUBMIT CV/PORTFOLIO NO LONGER AUTO-PROCESSES: the CTA opens a link-form MODAL first. New `submitPortfolioResponse` action creates-AND-fulfils in one call, premium-gated server-side (returns premium_required -> Premium panel). Root cause of the old instant-submit: `isSupplier` in WorkCard was INVERTED (`viewerSide === authorSide`); a professional viewing a recruiter post was treated as not-the-supplier. Fixed to `!==`.
+- CTA RULES: a professional viewing ANOTHER PROFESSIONAL'S doc-request post must NOT be able to request documents. Now only a RECRUITER sees the request CTA on a professional's doc post; a professional sees Get-in-touch (Message). Falls back via `isMessage || isDocResponse`.
+- RECRUITER POSTS DROPPED FROM FEED: feed interleaves a recruiter post every 5 professional posts, but with <5 professionals the slot never fires and leftover recruiter posts were LOST (the reported "new recruiter post not in feed"). Now leftovers are appended after the loop. Recruiter posts were never shuffled (sort byNewest); only professionals are seeded-shuffled.
+- PRISMA-IN-BROWSER CRASH ("something went wrong" on premium/visibility): `lib/premium.ts` imported prisma at top and a CLIENT component imported it. Split: lib/premium.ts = client-safe constants + isPremiumActive; lib/premium-server.ts = 'server-only' isUserPremium. Also fixed the 'use server' must-be-first-line error (an import had been prepended above it).
+- PILLS UNIFIED: every CTA pill now uses `btn-primary` (Get in touch was the odd one). Applied across RequestDocumentsCta and WorkCard (own-post + APPLY).
+- "Contact" -> "Get in touch" (ContactButton label; modal heading unchanged).
+- Premium page feature copy updated; sidebar Premium tooltip = "Go Premium".
+- STILL OPEN: professional posts remain seeded-shuffled - user asked whether to make them posted-order too; NOT decided. If they say yes, replace seededRank sort with byNewest.
+- COMMITTED: fe2d50b (pushed). 13 files, +212/-25.
+- VERIFIED: npx tsc --noEmit clean; next build compiled. NOT browser-verified.
 ### 2026-11-20 - Premium (professionals): messaging/submit gate + 4-post monthly boost
 
 - NEW DOMAIN: Premium, professionals only, $2/month. `User.premiumUntil DateTime?` (null/past = not premium) via raw SQL `supabase/034_add_premium.sql` - NOT db push (username drift). Helper `lib/premium.ts` (isPremiumActive / isUserPremium, PREMIUM_BOOST_SLOTS=4).
