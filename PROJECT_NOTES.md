@@ -186,6 +186,21 @@ done, delete it here and record the outcome in the Change Log.
 
 ### Small, contained
 
+- **Role/name flash on first paint (accepted trade of the 2026-11-20 instant-switch fix).**
+  The layout no longer awaits the session, so `Sidebar`/`MobileBottomNav` show the
+  default (professional, no name) for a beat until `useUser()` (`/api/me`) resolves.
+  Optional smoothing: seed the `/api/me` cache from the JWT claims, or render a
+  neutral placeholder instead of the default label, so nothing appears to flip.
+- **SWR cache is NOT seeded on hover.** `prefetch` on nav `Link`s warms the RSC
+  payload only. The client fetches behind `/api/home`, `/api/explore-grid`, etc.
+  still start on arrival. `lib/client/use-cached.ts` already exports `seedCache`
+  but nothing calls it on hover. Wiring a hover/touch-start prefetch would make
+  the FIRST visit to a warm page feel truly instant - the last piece of the
+  Instagram pattern.
+- **Remaining pages with no inline loading gate.** Messages, Responses, Settings
+  render their content without a `!data`/`isLoading` skeleton (they rely on the
+  route `loading.tsx` only, and `(app)/loading.tsx` is now `null`). Add an inline
+  skeleton gate so they never show a blank frame mid-fetch.
 - **"Message" vs "Contact" label mismatch.** The composer dropdown offers
   "Message" (from `AUTHOR_SIDE_LABEL`), but the card renders `ContactButton`,
   whose button text is hardcoded "Contact". Same action, two words. Pick one and
@@ -232,6 +247,20 @@ done, delete it here and record the outcome in the Change Log.
 ---
 
 ## Change Log
+
+### 2026-11-20 - Instant page switches (the real cause of "click then dead air")
+
+- SYMPTOM THE USER REPORTED: clicking ANY page showed NOTHING (no spinner, no skeleton) for a beat before the destination appeared. Same feel on every page. The user's description was exact and pointed at the shared shell, not the pages.
+- ROOT CAUSE: `app/(app)/layout.tsx` did `await getSessionRole()` on EVERY navigation. Because that await sits in the LAYOUT, no `loading.tsx` below it could render until it resolved, so every click paid the session read before the screen changed. The middleware comment already documented that the layout "could not render until a Prisma query finished" - auth had been moved to middleware, but the layout's own await was never removed. Half-done fix.
+- FIX: `app/(app)/layout.tsx` is now a SYNCHRONOUS component. Removed `await getSessionRole()`, the `redirect('/auth/login')`, and the `role`/`name` props to the shell. Auth is still enforced by `middleware.ts` (verified: it redirects unauthenticated requests before any layout runs, using `getSession()` local JWT decode). `Sidebar` and `MobileBottomNav` now take NO props and derive the viewer from the existing cached `useUser()` (`/api/me`) hook. Result: click -> shell + route swap immediately; role/name settle a beat later. This is the Instagram pattern (switch screen first, load content after).
+- TRADE-OFF, EXPECTED: for a split second after load the Create-Post label / name may show the default before `useUser()` resolves. Same trade every social app makes. Smooth it later if it reads as a flash.
+- FEED SKELETON EXTRACTED: `components/work/FeedSkeleton.tsx` (was inline in `feed/page.tsx`), so `app/(app)/feed/loading.tsx` and the page's own `!data` gate render the EXACT same shape - the swap is invisible.
+- NEW `app/(app)/explore/loading.tsx` (header + search + chips + masonry grid).
+- `app/(app)/loading.tsx` now returns `null` (was a generic card skeleton that matched almost no route, so every transition flashed a wrong-shaped placeholder before the real page - part of why it read as "loads before it switches"). Routes with a known shape carry their own `loading.tsx`.
+- PREFETCH: `prefetch` added to every `Sidebar` and `MobileNav` `Link` (drawer + bottom bar + brand + search). NOTE this warms the RSC payload, NOT the client SWR fetch behind `/api/home` etc. - the real data still loads on arrival. A hover-seed of the SWR cache was CONSIDERED AND NOT DONE (see Open Work).
+- TOOLING GOTCHA (cost real time, recorded): `write_file` reported success TWICE for `components/work/FeedSkeleton.tsx` while nothing landed on disk (a stale/empty VS Code buffer shadowing the path). `edit_file` also silently no-op'd on the `MobileBottomNav` signature change. Workaround that DID persist: write via shell `base64 -d > file` and verify with `ls`/`head`; apply `sed -i` for single-line edits and verify with `grep`. ALWAYS verify with a shell read after a write in this workspace.
+- COMMITTED: `99b02f0` (pushed to origin/main). 25 files, +654/-92. The commit BUNDLED pre-existing uncommitted work that was already in the tree (instant-post wiring: `lib/client/pending-post.ts`, `feed/page.tsx`, `NewWorkForm`, `profile/work/actions.ts`, plus many other route `loading.tsx` files) at the user's explicit request ("Option B"). Worth a look in case any of it was mid-work.
+- VERIFIED: `npx tsc --noEmit` clean. NOT browser-verified - the user must confirm the dead air is actually gone and that the role flash is acceptable.
 
 ### 2026-11-20 - Instant post, 3s auto-hide chrome, randomized Explore, fitted skeletons
 
