@@ -248,6 +248,17 @@ done, delete it here and record the outcome in the Change Log.
 
 ## Change Log
 
+### 2026-11-20 - Premium (professionals): messaging/submit gate + 4-post monthly boost
+
+- NEW DOMAIN: Premium, professionals only, $2/month. `User.premiumUntil DateTime?` (null/past = not premium) via raw SQL `supabase/034_add_premium.sql` - NOT db push (username drift). Helper `lib/premium.ts` (isPremiumActive / isUserPremium, PREMIUM_BOOST_SLOTS=4).
+- MESSAGE/SUBMIT GATE: `app/(app)/profile/contact/actions.ts` now returns `premium_required` for a PROFESSIONAL who is not premium. Recruiter posts use the SAME ContactRequest path with workPostId (that IS the submit), so both are gated by the one check. `ContactButton.tsx` shows a Premium CTA block (not a red error) linking to /premium.
+- CHECKOUT: `/premium` page + `startPremium` action. Creates a PENDING Payment (provider STRIPE), then ACTIVATES 30 days as a STUB (the real Stripe session call is the single marked TODO). Refuses non-professionals.
+- BOOSTS RE-HOMED UNDER PREMIUM: credits/buy-boosts UI removed from the visibility page. `BoostForm`/`BuyBoostsButton` replaced by `PremiumBoostForm` - pick up to 4 published posts, rotate anytime. `setPremiumBoostPosts` reuses the EXISTING Boost engine untouched (one ACTIVE Boost row per premium period, BoostPost rows = selection; scheduling/weighting/impressions unchanged).
+- SIDEBAR: Premium item under Boost Visibility, new DollarIcon.
+- TOOLING: `cat > file` / append via heredoc DID persist where `write_file`/`edit_file` silently failed (`lib/premium.ts` and the actions append were silently lost on first attempt - verified with ls/grep). `node -e` breaks when the JS contains backticks or nested quotes; write the script to /tmp and run `node /tmp/x.js`.
+- BLOCKERS FOR USER: (1) stop the dev server then run `npx prisma generate` - it hit the known EPERM engine lock; (2) APPLY `supabase/034_add_premium.sql` in Supabase or premiumUntil reads/writes fail at runtime.
+- COMMITTED: 9285bbc (pushed). 12 files, +355/-36.
+- VERIFIED: `npx tsc --noEmit` clean. NOT browser-verified.
 ### 2026-11-20 - Profile converted to client cache; mobile bar state fixed
 
 - PROFILE FELT LIKE IT WAS NOT PART OF THE SITE: it was the only page still a force-dynamic SERVER component, doing SIX SEQUENTIAL Prisma awaits on every visit. Every other page is a client page on a cached SWR key, so it alone re-queried cold each time. CONVERTED to the same pattern: new app/api/profile/[username]/route.ts (queries run in PARALLEL via Promise.all) + app/(app)/[username]/page.tsx is now a client component using useCached('/api/profile/<username>') with a ProfileSkeleton gate. Repeat visits hit the memory cache and paint instantly. TRADE-OFF: profile data is no longer server-rendered for link previews/SEO - accepted by the user, same as the feed.
