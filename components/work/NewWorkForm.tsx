@@ -292,6 +292,15 @@ export function WorkForm({
                       : 'border-line hover:bg-surface-sunken'
                   }`}
                 >
+                  <div className={`mb-2 flex h-12 items-center justify-center ${aspect === r ? 'text-brand' : 'text-ink-subtle'}`}>
+                    <span
+                      className={
+                        r === '9:16'
+                          ? 'h-11 w-[25px] rounded-[3px] border-2 border-current'
+                          : 'h-[25px] w-11 rounded-[3px] border-2 border-current'
+                      }
+                    />
+                  </div>
                   <div className="text-[15px] font-bold text-ink">{r}</div>
                   <div className="mt-1 text-[11px] text-ink-subtle">
                     {r === '9:16' ? 'portrait' : 'landscape'}

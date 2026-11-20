@@ -114,14 +114,8 @@ export function ProfileBody({
               <span>{prof?.location || recruiter?.location}</span>
             )}
             <span>
-              <strong className="text-ink">{isRecruiter ? roles.length : posts.length}</strong>{' '}
-              {isRecruiter
-                ? roles.length === 1
-                  ? 'role'
-                  : 'roles'
-                : posts.length === 1
-                  ? 'post'
-                  : 'posts'}
+              <strong className="text-ink">{posts.length}</strong>{' '}
+              {posts.length === 1 ? 'Post' : 'Posts'}
             </span>
             {prof?.availability && (
               <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-emerald-600">

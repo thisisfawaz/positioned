@@ -195,7 +195,7 @@ export function ProfilePosts({
       {/* Tabs */}
       <div className="flex items-center gap-5 border-b border-line px-4">
         <button type="button" onClick={() => setTab('published')} className={tabClass(tab === 'published')}>
-          {isRecruiter ? 'Roles' : 'Published'}
+          Posts
           {tab === 'published' && (
             <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-brand" />
           )}
@@ -231,27 +231,6 @@ export function ProfilePosts({
           <div className="px-6 py-16 text-center text-[14px] text-ink-subtle">
             No experience added yet.
           </div>
-        )
-      ) : isRecruiter ? (
-        roles.length === 0 ? (
-          <div className="px-6 py-16 text-center text-[14px] text-ink-subtle">
-            {isOwn ? "You haven't posted any roles yet." : 'No roles posted yet.'}
-          </div>
-        ) : (
-          <ul className="grid grid-cols-3 gap-1 p-1">
-            {roles.slice(0, visible).map((r: any) => (
-              <li key={r.id}>
-                <Link
-                  href={`/${handle}/recruitments/${r.id}`}
-                  className="group relative flex aspect-square flex-col justify-center overflow-hidden bg-gradient-to-br from-brand-light to-surface-sunken p-2 text-center"
-                >
-                  <span className="text-[12px] font-semibold leading-tight text-ink line-clamp-3">
-                    {r.title}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
         )
       ) : posts.length === 0 ? (
         <div className="px-6 py-16 text-center text-[14px] text-ink-subtle">

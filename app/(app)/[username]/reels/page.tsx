@@ -29,13 +29,19 @@ export default async function ProfileReelsPage({
       name: true,
       username: true,
       professionalProfile: { select: { id: true } },
+      recruiterProfile: { select: { id: true } },
     },
   })
 
-  if (!user || !user.professionalProfile) notFound()
+  if (!user || (!user.professionalProfile && !user.recruiterProfile)) notFound()
 
   const posts = await prisma.workPost.findMany({
-    where: { professionalId: user.professionalProfile.id, status: 'PUBLISHED' },
+    where: {
+      status: 'PUBLISHED',
+      ...(user.professionalProfile
+        ? { professionalId: user.professionalProfile.id }
+        : { recruiterProfileId: user.recruiterProfile!.id }),
+    },
     orderBy: { createdAt: 'desc' },
     include: {
       mediaAssets: { orderBy: { createdAt: 'asc' }, take: 1 },
@@ -43,6 +49,13 @@ export default async function ProfileReelsPage({
         select: {
           title: true,
           location: true,
+          profilePhoto: true,
+          user: { select: { id: true, name: true, username: true } },
+        },
+      },
+      recruiterProfile: {
+        select: {
+          organization: true,
           profilePhoto: true,
           user: { select: { id: true, name: true, username: true } },
         },

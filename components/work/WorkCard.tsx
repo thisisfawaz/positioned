@@ -11,6 +11,7 @@ import {
 import { relativeTime, initialsOf } from '@/lib/client/social'
 import { FollowPostsButton } from '@/components/contact/FollowPostsButton'
 import { ContactButton } from '@/components/contact/ContactButton'
+import { PostOwnerMenu } from '@/components/work/PostOwnerMenu'
 import { responseLabel, type PostSide } from '@/lib/posts/response-types'
 import { RequestDocumentsCta } from '@/components/work/RequestDocumentsCta'
 import { VideoPlayer, VideoTimeline, type VideoPlayerHandle } from '@/components/work/VideoPlayer'
@@ -18,7 +19,6 @@ import type { ResponseType } from '@prisma/client'
 import {
   ASPECT_CLASS,
   aspectFromMetadata,
-  fillsFrame,
   parseAspect,
   type AspectRatio,
 } from '@/lib/posts/aspect'
@@ -255,7 +255,7 @@ export function WorkCard({
         <span className="group relative inline-block">
           <span
             aria-disabled="true"
-            className="btn-primary text-sm px-4 py-2 cursor-not-allowed opacity-60"
+            className="btn-primary text-sm px-4 py-2 cursor-not-allowed"
           >
             {ctaLabel}
           </span>
@@ -326,12 +326,7 @@ export function WorkCard({
       <img
         src={imageUrl}
         alt={post.title}
-        onLoad={(e) => {
-          const el = e.currentTarget
-          if (!el.naturalWidth || !el.naturalHeight) return
-          const ratio = el.naturalWidth / el.naturalHeight
-          el.dataset.fit = fillsFrame(ratio, aspect) ? 'cover' : 'contain'
-        }}
+        data-fit={aspect === '9:16' ? 'cover' : 'contain'}
         className={`absolute inset-0 h-full w-full object-contain transition-none data-[fit=cover]:object-cover`}
       />
     </>
@@ -390,13 +385,19 @@ export function WorkCard({
           {[authorTitle, relativeTime(post.createdAt)].filter(Boolean).join(' · ')}
         </p>
       </div>
-      {viewerId && author?.id && author.id !== viewerId && (
+      {viewerId && author?.id && author.id === viewerId ? (
+        <PostOwnerMenu
+          postId={post.id}
+          initialCaption={post.caption ?? ''}
+          initialAspect={aspect}
+        />
+      ) : viewerId && author?.id && author.id !== viewerId ? (
         <FollowPostsButton
           userId={author.id}
           initialFollowing={followingIds?.includes(author.id) ?? false}
           size="pill"
         />
-      )}
+      ) : null}
     </div>
   )
 

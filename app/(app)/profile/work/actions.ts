@@ -474,3 +474,66 @@ export async function deleteWorkPost(
 
   redirect('/profile/work', 'push')
 }
+
+/**
+ * MINIMAL EDIT: caption + orientation ONLY. Media links are never touched.
+ *
+ * The full updateWorkPost replaces all media (delete + recreate) because its
+ * form carries an image. This action exists so editing TEXT cannot wipe a
+ * post's existing image/video. Ownership is verified the same way.
+ */
+export async function updatePostText(
+  _prevState: WorkFormState,
+  formData: FormData
+): Promise<WorkFormState> {
+  const user = await getCurrentUser()
+  if (!user) return { error: 'Not signed in.', values: rawValues(formData) }
+  const owner = ownerFields(user)
+  if (!owner) return { error: 'Your profile is not set up yet.', values: rawValues(formData) }
+
+  const postId = String(formData.get('postId') || '')
+  const caption = String(formData.get('caption') || '').trim()
+  const aspect = String(formData.get('aspect') || '') === '16:9' ? '16:9' : '9:16'
+  if (!postId) return { error: 'Missing post ID.', values: rawValues(formData) }
+
+  const existing = await prisma.workPost.findUnique({ where: { id: postId } })
+  const isOwner =
+    existing &&
+    (('professionalId' in owner && existing.professionalId === owner.professionalId) ||
+      ('recruiterProfileId' in owner && existing.recruiterProfileId === owner.recruiterProfileId))
+  if (!existing || !isOwner) {
+    return { error: 'You can only edit your own posts.', values: rawValues(formData) }
+  }
+
+  const derivedTitle = (caption || existing.title || 'Untitled post').slice(0, 80)
+
+  try {
+    await prisma.workPost.update({
+      where: { id: postId },
+      data: { caption: caption || null, title: derivedTitle },
+    })
+    // Orientation lives on the media asset metadata; update the first asset
+    // WITHOUT deleting/recreating it, so the image itself is preserved.
+    const asset = await prisma.mediaAsset.findFirst({
+      where: { workPostId: postId },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, metadata: true },
+    })
+    if (asset) {
+      const prev = (asset.metadata ?? {}) as Record<string, unknown>
+      await prisma.mediaAsset.update({
+        where: { id: asset.id },
+        data: { metadata: { ...prev, aspect } },
+      })
+    }
+  } catch (err) {
+    console.error('updatePostText failed:', err)
+    return { error: 'Failed to save. Please try again.', values: rawValues(formData) }
+  }
+
+  revalidatePath('/profile/work')
+  revalidatePath(`/profile/work/${postId}`)
+  revalidatePath('/profile/feed')
+  revalidateTag('feed', 'max')
+  return { ok: true } as WorkFormState
+}

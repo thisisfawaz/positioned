@@ -73,7 +73,7 @@ export function RequestDocumentsCta({
 
   if (activeRequestId && !isSupplier) {
     return (
-      <span className="btn-primary text-sm px-4 py-2 disabled:opacity-60 disabled:cursor-not-allowed">
+      <span className="btn-primary text-sm px-4 py-2 disabled:cursor-not-allowed">
         Waiting for {askedFor}
       </span>
     )
@@ -136,7 +136,7 @@ export function RequestDocumentsCta({
       <button
         type="submit"
         disabled={pending}
-        className="btn-primary text-sm px-4 py-2 disabled:opacity-60 disabled:cursor-not-allowed"
+        className="btn-primary text-sm px-4 py-2 disabled:cursor-not-allowed"
       >
         {pending ? 'Sending…' : label}
       </button>

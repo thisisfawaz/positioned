@@ -53,9 +53,12 @@ export async function GET(
           })
           .then(Boolean)
       : Promise.resolve(false),
-    prof
+    prof || recruiter
       ? prisma.workPost.findMany({
-          where: { professionalId: prof.id, status: 'PUBLISHED' },
+          where: {
+            status: 'PUBLISHED',
+            ...(prof ? { professionalId: prof.id } : { recruiterProfileId: recruiter!.id }),
+          },
           orderBy: { createdAt: 'desc' },
           include: { mediaAssets: { orderBy: { createdAt: 'asc' }, take: 1 } },
         })
