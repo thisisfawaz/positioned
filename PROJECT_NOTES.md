@@ -248,6 +248,15 @@ done, delete it here and record the outcome in the Change Log.
 
 ## Change Log
 
+### 2026-11-20 - Profile converted to client cache; mobile bar state fixed
+
+- PROFILE FELT LIKE IT WAS NOT PART OF THE SITE: it was the only page still a force-dynamic SERVER component, doing SIX SEQUENTIAL Prisma awaits on every visit. Every other page is a client page on a cached SWR key, so it alone re-queried cold each time. CONVERTED to the same pattern: new app/api/profile/[username]/route.ts (queries run in PARALLEL via Promise.all) + app/(app)/[username]/page.tsx is now a client component using useCached('/api/profile/<username>') with a ProfileSkeleton gate. Repeat visits hit the memory cache and paint instantly. TRADE-OFF: profile data is no longer server-rendered for link previews/SEO - accepted by the user, same as the feed.
+- The profile API route returns 404 for an unknown user; the client page calls notFound() on a 404 error.
+- BOTTOM NAV STAYED HIDDEN AFTER THE REEL: hidden is local useState in each nav, driven by emitReelScroll. ReelFeed emitted true while scrolling but NEVER false on unmount, so the next page mounted already hidden. Fixed both ends: ReelFeed cleanup sets barsHidden.current=false and emits false; both MobileTopBar and MobileBottomNav reset hidden on pathname change.
+- TOP BAR HID ON EVERY PAGE SCROLL: MobileTopBar used a window scroll listener unconditionally. Removed it. The top bar now ONLY auto-hides on the FEED via the reel-scroll event; normal pages keep their header while scrolling.
+- TOOLING: edit_file silently failed AGAIN on a multi-line block (MobileTopBar). Used a node script with an explicit ANCHOR-NOT-FOUND guard instead. Also: passing JS with backticks through bash -e breaks (bash runs it as command substitution) - write the script to /tmp and run node /tmp/notes.js.
+- COMMITTED: 8b2acf9 (pushed). 4 files, +168/-86.
+- VERIFIED: npx tsc --noEmit clean. NOT browser-verified.
 ### 2026-11-20 - Instant page switches (the real cause of "click then dead air")
 
 - SYMPTOM THE USER REPORTED: clicking ANY page showed NOTHING (no spinner, no skeleton) for a beat before the destination appeared. Same feel on every page. The user's description was exact and pointed at the shared shell, not the pages.
