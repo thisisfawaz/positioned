@@ -248,6 +248,18 @@ done, delete it here and record the outcome in the Change Log.
 
 ## Change Log
 
+### 2026-11-20 - Premium notice popups (message + submit), Message on recruiter profiles, fullscreen mobile modal
+
+- PREMIUM NOTICE = SMALL AUTO-POPUP: both ContactButton (message) and SupplierSubmitForm (submit CV/portfolio) now auto-show a small closable Premium popup over the form, and re-show it on submit attempt. Server still enforces (premium_required); the popup is the immediate UX. Links to /premium where the Go Premium $2/mo button lives.
+- ContactButton: premiumBlocked prop. Button now OPENS the form and auto-shows the popup (was: showed only a notice). onSubmit guard re-shows it when blocked. Profile API returns viewerPremiumBlocked (viewer PROFESSIONAL + target RECRUITER + not premium), threaded page -> ProfileBody -> ContactButton.
+- SupplierSubmitForm: notice state defaults true (auto-show), useEffect re-opens on premium_required, submit guard re-shows.
+- MESSAGE ON RECRUITER PROFILES: the profile ContactButton was gated on {prof && ...} (professional only). Now shows on both (hidden only on your own profile).
+- PROFILE MESSAGE MODAL MOBILE: ContactButton has its OWN overlay (not the shared Modal), so fullScreenOnMobile never applied. Made it full-screen + rounded-none on mobile, card on sm+.
+- GOTCHA: a node-script slice that spanned `{notice && ( ... )}
+
+{open && (` deleted the `{open && (` opener along with the old block -> JSX imbalance (TS1381). When slicing a block, anchor on the closing marker of the block being removed, not the start of the next one.
+- COMMITTED: c2aaef2 (pushed). 5 files, +65/-7.
+- VERIFIED: npx tsc --noEmit clean. NOT browser-verified.
 ### 2026-11-20 - Gate ALL response paths behind premium; profile Message button
 
 - PREMIUM GATE WAS INCOMPLETE: only submitPortfolioResponse checked premium. requestDocuments and fulfilDocumentRequest were reachable by a non-premium professional, so they could still respond to a recruiter's post. Added a shared `requiresPremium(userId, role)` helper and applied it to ALL THREE actions in app/(app)/profile/requests/actions.ts. Client surfaces (RequestDocumentsCta form + FulfilForm) now render the Premium CTA on premium_required.
