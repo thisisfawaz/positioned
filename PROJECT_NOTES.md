@@ -248,6 +248,12 @@ done, delete it here and record the outcome in the Change Log.
 
 ## Change Log
 
+### 2026-11-20 - Gate ALL response paths behind premium; profile Message button
+
+- PREMIUM GATE WAS INCOMPLETE: only submitPortfolioResponse checked premium. requestDocuments and fulfilDocumentRequest were reachable by a non-premium professional, so they could still respond to a recruiter's post. Added a shared `requiresPremium(userId, role)` helper and applied it to ALL THREE actions in app/(app)/profile/requests/actions.ts. Client surfaces (RequestDocumentsCta form + FulfilForm) now render the Premium CTA on premium_required.
+- PROFILE ACTION ROW: Message button (ContactButton, new `label` prop) sits beside Add to list (FollowPostsButton). Removed the redundant SaveProfessionalButton (the "Add" button). Message uses a new ContactButton `shape="profile"` so it matches FollowPostsButton exactly (rounded-md px-5 py-2 text-sm bg-brand). NOTE the Message button is currently gated on `{prof && ...}` so it shows on PROFESSIONAL profiles only - recruiters need it if requested.
+- COMMITTED: a8f8999 (pushed). 5 files, +33/-8.
+- VERIFIED: npx tsc --noEmit clean. NOT browser-verified.
 ### 2026-11-20 - Owner edit/delete menu, recruiter profile+reel posts, aspect shape, CTA fixes
 
 - OWNER 3-DOTS MENU: new `components/work/PostOwnerMenu.tsx` in WorkCard header when viewerId === author.id (works for professionals AND recruiters). Edit opens a popup that changes ONLY caption + orientation; Delete confirms first. Closes on outside click + Escape.
