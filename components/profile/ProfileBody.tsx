@@ -24,6 +24,7 @@ export function ProfileBody({
   posts,
   roles,
   canFollow,
+  viewerPremiumBlocked = false,
 }: {
   user: { id: string; name: string; username: string | null }
   prof: any
@@ -34,6 +35,7 @@ export function ProfileBody({
   posts: Array<{ id: string; title: string; purpose?: string | null; challenge?: string | null; result?: string | null; views: number; likes: number; status: string }>
   roles: Array<{ id: string; title: string; organization?: string | null; location?: string | null; employmentType?: string | null; status: string; views: number }>
   canFollow: boolean
+  viewerPremiumBlocked?: boolean
 }) {
   const displayName = user.name
   const handle = user.username || user.id
@@ -98,7 +100,7 @@ export function ProfileBody({
             </>
           ) : (
             <>
-              {prof && <ContactButton toUserId={user.id} toName={user.name} label="Message" shape="profile" />}
+              <ContactButton toUserId={user.id} toName={user.name} label="Message" shape="profile" premiumBlocked={viewerPremiumBlocked} />
               {canFollow && (
                 <FollowPostsButton userId={user.id} initialFollowing={onList} />
               )}

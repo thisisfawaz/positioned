@@ -16,6 +16,7 @@ type ProfileResponse = {
   posts: any[]
   roles: any[]
   canFollow: boolean
+  viewerPremiumBlocked?: boolean
 }
 
 function ProfileSkeleton() {
@@ -73,6 +74,7 @@ export default function ProfilePage({
           posts={data.posts}
           roles={data.roles}
           canFollow={data.canFollow}
+          viewerPremiumBlocked={data.viewerPremiumBlocked}
         />
       )}
     </div>

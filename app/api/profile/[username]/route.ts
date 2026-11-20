@@ -39,6 +39,15 @@ export async function GET(
   const recruiter = user.recruiterProfile
   const isRecruiter = user.role === 'RECRUITER'
 
+  // A professional viewing a RECRUITER must be premium to message/submit. Used
+  // to show the Premium notice ON CLICK, before the form.
+  let viewerPremiumBlocked = false
+  if (currentUser && currentUser.role === 'PROFESSIONAL' && isRecruiter && !isOwn) {
+    const vu = await prisma.user.findUnique({ where: { id: currentUser.id }, select: { premiumUntil: true } })
+    const { isPremiumActive } = await import('@/lib/premium')
+    viewerPremiumBlocked = !isPremiumActive(vu?.premiumUntil)
+  }
+
   const [onList, posts, roles] = await Promise.all([
     currentUser
       ? prisma.follow
@@ -81,5 +90,6 @@ export async function GET(
     posts,
     roles,
     canFollow: Boolean(currentUser),
+    viewerPremiumBlocked,
   })
 }

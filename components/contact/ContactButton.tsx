@@ -10,6 +10,7 @@ export function ContactButton({
   workPostId,
   label = 'Get in touch',
   shape,
+  premiumBlocked = false,
 }: {
   toUserId: string
   toName: string
@@ -17,8 +18,11 @@ export function ContactButton({
   label?: string
   /** Mirror another button's shape (e.g. 'profile') instead of btn-primary. */
   shape?: 'profile'
+  /** When true, clicking shows the Premium notice instead of the form. */
+  premiumBlocked?: boolean
 }) {
   const [open, setOpen] = useState(false)
+  const [notice, setNotice] = useState(false)
   const [state, formAction, pending] = useActionState<ContactFormState, FormData>(
     sendContactRequest,
     {}
@@ -36,15 +40,28 @@ export function ContactButton({
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => { setOpen(true); if (premiumBlocked) setNotice(true) }}
         className={shape === 'profile' ? 'rounded-md bg-brand px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-dark' : 'btn-primary text-sm px-4 py-2'}
       >
         {label}
       </button>
 
+      {notice && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-6">
+          <div className="w-full max-w-sm rounded-2xl bg-surface p-5 shadow-xl">
+            <div className="mb-2 flex items-start justify-between">
+              <h2 className="text-[15px] font-semibold text-ink">Premium required</h2>
+              <button type="button" onClick={() => setNotice(false)} aria-label="Close" className="text-lg leading-none text-ink-subtle hover:text-ink">×</button>
+            </div>
+            <p className="text-[13px] text-ink-muted">Messaging recruiters and submitting to their posts is part of Positioned Premium.</p>
+            <a href="/premium" className="mt-3 inline-flex rounded-xl bg-[var(--brand-black)] px-4 py-2 text-[13px] font-semibold text-[var(--surface)]">See what Premium gives you</a>
+          </div>
+        </div>
+      )}
+
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="bg-surface rounded-lg shadow-xl w-full max-w-lg p-6">
+        <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/40 sm:items-center sm:p-4">
+          <div className="bg-surface w-full overflow-y-auto p-6 shadow-xl rounded-none sm:max-w-lg sm:rounded-lg">
             <div className="flex items-start justify-between mb-4">
               <h2 className="text-lg font-semibold">Contact {toName}</h2>
               <button
@@ -71,7 +88,16 @@ export function ContactButton({
                 </button>
               </div>
             ) : (
-              <form action={formAction} className="space-y-4">
+              <form
+                action={formAction}
+                className="space-y-4"
+                onSubmit={(e) => {
+                  if (premiumBlocked) {
+                    e.preventDefault()
+                    setNotice(true)
+                  }
+                }}
+              >
                 <input type="hidden" name="toUserId" value={toUserId} />
                 {workPostId && <input type="hidden" name="workPostId" value={workPostId} />}
 

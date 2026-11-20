@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 import Link from 'next/link'
 import {
   requestDocuments,
@@ -165,6 +165,12 @@ function SupplierSubmitForm({
   )
   const wantsCv = response === 'CV' || response === 'CV_AND_PORTFOLIO'
   const wantsPortfolio = response === 'PORTFOLIO' || response === 'CV_AND_PORTFOLIO'
+  const [notice, setNotice] = useState(true) // auto-show on open
+
+  // Re-show whenever the server rejects for premium.
+  useEffect(() => {
+    if (state.error === 'premium_required') setNotice(true)
+  }, [state.error])
 
   if (state.ok) {
     return (
@@ -176,8 +182,20 @@ function SupplierSubmitForm({
   }
 
   return (
-    <form action={formAction} className="space-y-3">
+    <form action={formAction} className="space-y-3" onSubmit={(e) => { if (state.error === 'premium_required') { e.preventDefault(); setNotice(true) } }}>
       <input type="hidden" name="postId" value={postId} />
+      {notice && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-6">
+          <div className="w-full max-w-sm rounded-2xl bg-surface p-5 shadow-xl">
+            <div className="mb-2 flex items-start justify-between">
+              <h2 className="text-[15px] font-semibold text-ink">Premium required</h2>
+              <button type="button" onClick={() => setNotice(false)} aria-label="Close" className="text-lg leading-none text-ink-subtle hover:text-ink">×</button>
+            </div>
+            <p className="text-[13px] text-ink-muted">Submitting to recruiter posts is part of Positioned Premium.</p>
+            <a href="/premium" className="mt-3 inline-flex rounded-xl bg-[var(--brand-black)] px-4 py-2 text-[13px] font-semibold text-[var(--surface)]">Go Premium to submit</a>
+          </div>
+        </div>
+      )}
       {wantsCv && (
         <label className="block text-[13px] font-medium text-ink">
           CV link
