@@ -248,6 +248,18 @@ done, delete it here and record the outcome in the Change Log.
 
 ## Change Log
 
+### 2026-11-20 - Owner edit/delete menu, recruiter profile+reel posts, aspect shape, CTA fixes
+
+- OWNER 3-DOTS MENU: new `components/work/PostOwnerMenu.tsx` in WorkCard header when viewerId === author.id (works for professionals AND recruiters). Edit opens a popup that changes ONLY caption + orientation; Delete confirms first. Closes on outside click + Escape.
+- EDIT DOES NOT TOUCH MEDIA: new `updatePostText` action. The existing `updateWorkPost` DELETES all MediaAssets and recreates only if the form carries media - so a caption-only edit would WIPE the image. updatePostText updates caption/title and merges `{aspect}` into the first asset's metadata, never delete/recreate.
+- RECRUITER POSTS ON PROFILE: they live in WorkPost, but the profile rendered from the deprecated Recruitment table and the API only fetched WorkPost for professionals. API now fetches recruiter WorkPosts; ProfilePosts renders the posts grid for recruiters; /[username]/reels includes recruiter posts.
+- REEL AUTHOR "Unknown": the reels query included only `professional`, never `recruiterProfile`, so a recruiter post had no author. Added recruiterProfile to the include.
+- ASPECT: composer frame selector now shows the SHAPE (tall vs wide box) with selection tint, not just text. 9:16 now forces object-cover (fills the frame, crops overflow) via a static data-fit from the chosen aspect; 16:9 stays object-contain (actual landscape shape). Desktop reel frame itself is UNCHANGED (still the centred 9:16 box) - the fill/contain happens INSIDE it.
+- LABEL: 'Roles' -> 'Posts'. GOTCHA: a bare `'Posts'` as JSX text renders the quotes literally - it must be `Posts` or `{'Posts'}`. Count line capitalized Post/Posts.
+- INACTIVE CTA: removed opacity-60 that made the solid brand button look transparent over the dark reel.
+- STILL OPEN: professional posts remain seeded-shuffled (user has not decided whether to switch to posted order).
+- COMMITTED: 48c1172 (pushed). 9 files, +265/-46.
+- VERIFIED: npx tsc --noEmit clean; next build compiled. NOT browser-verified.
 ### 2026-11-20 - Premium fixes: submit modal, CTA rules, recruiter feed, unified pills
 
 - SUBMIT CV/PORTFOLIO NO LONGER AUTO-PROCESSES: the CTA opens a link-form MODAL first. New `submitPortfolioResponse` action creates-AND-fulfils in one call, premium-gated server-side (returns premium_required -> Premium panel). Root cause of the old instant-submit: `isSupplier` in WorkCard was INVERTED (`viewerSide === authorSide`); a professional viewing a recruiter post was treated as not-the-supplier. Fixed to `!==`.
