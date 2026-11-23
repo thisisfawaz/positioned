@@ -330,6 +330,9 @@ model MediaAsset {
   workPostId      String
   workPost        WorkPost       @relation(fields: [workPostId], references: [id])
   provider        StorageProvider
+  /// EITHER a bare LOCAL filename (`<uuid>.<ext>`) OR a full absolute URL
+  /// (Cloudinary secure_url). Renderers test for `^https?://` and prefix only
+  /// the bare filename case with /uploads/. See app/api/upload/route.ts.
   providerAssetId String
   type            MediaType
   thumbnail       String?
@@ -344,8 +347,12 @@ enum StorageProvider {
   ONEDRIVE
   S3
   /// Local disk under public/uploads. FOR DEVELOPMENT ONLY - public/ is baked
-  /// at build time and does not accept writes on Vercel.
+  /// at build time and does not accept writes on Vercel. Used only as a
+  /// fallback when Cloudinary is not configured.
   LOCAL
+  /// Cloudinary - images and video. providerAssetId stores the full secure_url
+  /// (absolute https URL), which every renderer passes through unchanged.
+  CLOUDINARY
 }
 
 enum MediaType {

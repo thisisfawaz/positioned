@@ -52,9 +52,14 @@ export default async function EditWorkPage({
             caption: post.caption ?? undefined,
             // An image is a MediaAsset; a YouTube post stores its embed URL on
             // the post itself. Passing both lets the form restore either.
+            // providerAssetId is EITHER a bare LOCAL filename OR a full URL
+            // (Cloudinary). Prefix only the bare-filename case, otherwise the
+            // prefill becomes `/uploads/https://...` and never loads.
             mediaUrl:
               post.mediaType === 'IMAGE' && post.mediaAssets?.[0]
-                ? `/uploads/${post.mediaAssets[0].providerAssetId}`
+                ? /^https?:\/\//i.test(post.mediaAssets[0].providerAssetId)
+                  ? post.mediaAssets[0].providerAssetId
+                  : `/uploads/${post.mediaAssets[0].providerAssetId}`
                 : undefined,
             videoUrl: post.mediaType === 'YOUTUBE' ? post.videoUrl : undefined,
             desiredResponse: post.desiredResponse,

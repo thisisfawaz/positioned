@@ -225,8 +225,12 @@ done, delete it here and record the outcome in the Change Log.
 - **The fulfil form is one-shot from the card.** `/requests/[id]` is now
   editable, so a wrong link CAN be corrected there, but the card gives no route
   back to it once fulfilled. Low priority.
-- **`MediaAsset`/uploads are LOCAL-only.** `public/uploads` does not survive a
-  deploy. Real blocker for launch, unrelated to the current work.
+- **Media is on Cloudinary now; three loose ends remain.** Storage moved off
+  LOCAL on 2026-11-23 (see Change Log). Still open: (a) NO form exposes video
+  UPLOAD yet - all file inputs are images, video is the YouTube path, so the
+  route's video support is unreachable from the UI; (b) deleting a post does
+  NOT call `deleteFromCloudinary`, so assets orphan; (c) existing LOCAL rows are
+  kept working by the bare-filename convention but were not backfilled.
 - **Placeholder seed data is still in the database.** `node
   scripts/seed-placeholder-posts.js --clean` must be run before any demo or
   deploy - see the 2026-11-12 entry.
@@ -247,6 +251,21 @@ done, delete it here and record the outcome in the Change Log.
 ---
 
 ## Change Log
+
+### 2026-11-23 - Media storage moved to Cloudinary (images + video); LOCAL kept as dev fallback
+
+- WHY: the Open Work list flagged "`MediaAsset`/uploads are LOCAL-only" as a launch blocker - `public/uploads` does not survive a deploy and Vercel cannot write to it. Cloudinary is now the PRIMARY media store.
+- NEW `lib/storage/cloudinary.ts` (server-only): `isCloudinaryConfigured()`, `uploadToCloudinary(buffer, {resourceType, folder})` via `upload_stream`, `deleteFromCloudinary(publicId, resourceType)`. Reads `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET`. Delete helper is EXPORTED BUT NOT WIRED (deleting a post does not delete its asset yet).
+- `app/api/upload/route.ts` REWRITTEN. Same request/response contract as before (`file` in, `{url, provider, providerAssetId, type}` out) so no form changed. Behaviour: if the three env vars are set -> upload to Cloudinary (`folder: 'positioned/uploads'`), return `provider: 'CLOUDINARY'`, `providerAssetId` = the FULL `secure_url`, plus `publicId`/`duration`/`width`/`height`. If NOT configured -> LOCAL disk fallback (images only), exactly as before. VIDEO: accepted (`video/mp4|webm|quicktime`, 50MB cap); LOCAL fallback REFUSES video with a 501 pointing at the env vars, because public/ cannot stream it. Images keep the 5MB cap.
+- CONVENTION that made this a small change: `providerAssetId` is EITHER a bare LOCAL filename OR a full absolute URL, and ~all renderers already test `^https?://` and only prefix the bare case with `/uploads/`. So the read path needed NO changes. New `lib/storage/media-url.ts` (`toStoredAsset`, `toSrc`) codifies the convention as pure functions.
+- WRITE PATHS FIXED (they had assumed bare filenames): `app/(app)/profile/work/actions.ts` - `mediaRows()` and the edit replace-all block now use `toStoredAsset()`, storing `provider` (LOCAL|CLOUDINARY) and the normalized id instead of hardcoding `'LOCAL'` + `.replace('/uploads/','')`. `app/(app)/profile/settings/actions.ts` - added local `normalizeStoredPhoto()` so `profilePhoto` accepts `/uploads/<file>` OR `https://res.cloudinary.com/...` (was a `/uploads/`-only regex; both professional and recruiter update actions now use it). `app/(app)/profile/work/[id]/edit/page.tsx` - edit prefill no longer blindly prefixes `/uploads/` onto an absolute URL.
+- SCHEMA: added `CLOUDINARY` to `enum StorageProvider`; documented the `providerAssetId` dual convention on `MediaAsset`. Migration `supabase/035_storage_provider_cloudinary.sql` (`ALTER TYPE ... ADD VALUE IF NOT EXISTS`). APPLIED via `npx prisma db execute --file ... --schema prisma/schema.prisma` (NOT `db push`, per the drift rule). VERIFIED the live enum now reads `GOOGLE_DRIVE,DROPBOX,ONEDRIVE,S3,LOCAL,CLOUDINARY`. `npx prisma generate` run after the schema edit.
+- RECRUITMENTS: already store `imageUrl` verbatim and render it directly, so Cloudinary URLs work there with no change. `RecruitmentForm`/`NewWorkForm`/`ProfilePhotoPicker` just put `json.url` into a hidden input - unchanged.
+- CONFIG: `.env.example` created documenting all vars. Local `.env` got EMPTY `CLOUDINARY_*` placeholders appended. Server-only vars - never `NEXT_PUBLIC_`.
+- VERIFIED: `npx tsc --noEmit` clean; migration applied and enum confirmed in DB. Cloudinary credentials were then added to `.env` (cloud `mgjyjrmu`) and confirmed with an admin `ping()` (PING OK) - a one-off `scripts/verify-cloudinary.js`, since removed.
+- `next.config.js` gained `checkMediaStorageEnv()`: WARNS when all three Cloudinary vars are absent (intentional LOCAL fallback) and THROWS when only some are set (half-configured = silent upload failure). Also allowlisted `res.cloudinary.com` in `images.remotePatterns`.
+- SECURITY: the Root API SECRET was pasted in plain text during setup and should be ROTATED in the Cloudinary console (Settings -> API Keys -> rotate secret), then the new value copied into `.env`. The app keeps working; only the string changes.
+- NOT DONE / GAPS: (a) no UI accepts VIDEO UPLOAD yet - all three file inputs are `accept="image/..."` and video is still the YouTube-link path, so the route's video support is backend-only until a form exposes it; `WorkPost.mediaType` has no `VIDEO`/uploaded-video value, so an uploaded video would still be filed `IMAGE` if a form ever posts one. (b) Deleting a post does NOT call `deleteFromCloudinary` - orphaned assets accumulate. (c) Nothing was verified RENDERED in a browser yet (same standing risk as the rest of this file). (d) Existing LOCAL rows still work via the fallback convention; no backfill was done.
 
 ### 2026-11-20 - Premium notice popups (message + submit), Message on recruiter profiles, fullscreen mobile modal
 

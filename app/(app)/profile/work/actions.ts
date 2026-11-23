@@ -12,6 +12,7 @@ import {
   PROFESSIONAL_RESPONSES,
   RECRUITER_RESPONSES,
 } from '@/lib/posts/response-types'
+import { toStoredAsset } from '@/lib/storage/media-url'
 
 function allowedResponses(role: string): readonly string[] {
   return role === 'RECRUITER' ? RECRUITER_RESPONSES : PROFESSIONAL_RESPONSES
@@ -135,17 +136,19 @@ function extractFormData(formData: FormData, role: string) {
 /**
  * Builds the MediaAsset rows for a post from the uploaded URL.
  *
- * The upload route writes the file and returns `/uploads/<uuid>.<ext>`; only
- * that path travels with the form. LOCAL is a DEVELOPMENT-ONLY provider - see
- * app/api/upload/route.ts. Returns [] when there is no image, so a text post
- * stores no media at all rather than an empty row.
+ * The upload route returns EITHER a `/uploads/<uuid>.<ext>` path (LOCAL
+ * fallback) OR a full Cloudinary https URL. `toStoredAsset` normalizes both to
+ * the (provider, providerAssetId) pair the schema expects - LOCAL keeps a bare
+ * filename, CLOUDINARY stores the absolute URL. Returns [] when there is no
+ * image, so a text post stores no media at all rather than an empty row.
  */
 function mediaRows(mediaUrl: string, aspect: string) {
-  if (!mediaUrl) return []
+  const asset = toStoredAsset(mediaUrl)
+  if (!asset) return []
   return [
     {
-      provider: 'LOCAL' as const,
-      providerAssetId: mediaUrl.replace('/uploads/', ''),
+      provider: asset.provider,
+      providerAssetId: asset.providerAssetId,
       type: 'IMAGE' as const,
       // The chosen FRAME lives in the Json metadata column, so adding it needed
       // no migration. The renderers read it back to decide fill vs contain.
@@ -404,15 +407,18 @@ export async function updateWorkPost(
     // that removing the image actually removes the row.
     await prisma.mediaAsset.deleteMany({ where: { workPostId: postId } })
     if (hasImage) {
-      await prisma.mediaAsset.create({
-        data: {
-          workPostId: postId,
-          provider: 'LOCAL',
-          providerAssetId: d.mediaUrl.replace('/uploads/', ''),
-          type: 'IMAGE',
-          metadata: { aspect: d.aspect },
-        },
-      })
+      const asset = toStoredAsset(d.mediaUrl)
+      if (asset) {
+        await prisma.mediaAsset.create({
+          data: {
+            workPostId: postId,
+            provider: asset.provider,
+            providerAssetId: asset.providerAssetId,
+            type: 'IMAGE',
+            metadata: { aspect: d.aspect },
+          },
+        })
+      }
     }
   } catch (err) {
     console.error('Failed to update work post:', err)

@@ -19,6 +19,22 @@ type ExperienceInput = {
   description: string
 }
 
+/**
+ * Validates a profilePhoto value submitted through the hidden input.
+ *
+ * Accepts ONLY values this app produced:
+ *   - a LOCAL path:      /uploads/<file>
+ *   - a Cloudinary URL:  https://res.cloudinary.com/<cloud>/...
+ * Anything else returns null, so a tampered input cannot inject an arbitrary
+ * remote image or a javascript: URL.
+ */
+function normalizeStoredPhoto(raw: string): string | null {
+  if (!raw) return null
+  if (/^\/uploads\/[\w.-]+$/.test(raw)) return raw
+  if (/^https:\/\/res\.cloudinary\.com\/[^\s]+$/i.test(raw)) return raw
+  return null
+}
+
 /** Parses the hidden JSON field the experience repeater submits. */
 function parseExperiences(formData: FormData): ExperienceInput[] {
   try {
@@ -79,9 +95,11 @@ export async function updateProfessionalProfile(
   const githubUrl = normalizeUrl(String(formData.get('githubUrl') || ''))
   const websiteUrl = normalizeUrl(String(formData.get('websiteUrl') || ''))
   const contactEmail = String(formData.get('contactEmail') || '').trim()
-  // Only accept a path this app produced, never an arbitrary URL.
+  // Only accept a value this app produced: a LOCAL `/uploads/<file>` path OR
+  // a Cloudinary secure_url (https://res.cloudinary.com/...). Anything else is
+  // dropped, so a tampered hidden input cannot inject an arbitrary URL.
   const photoRaw = String(formData.get('profilePhoto') || '').trim()
-  const profilePhoto = /^\/uploads\/[\w.-]+$/.test(photoRaw) ? photoRaw : null
+  const profilePhoto = normalizeStoredPhoto(photoRaw)
   const experiences = parseExperiences(formData)
 
   if (!name) {
@@ -203,9 +221,10 @@ export async function updateRecruiterProfile(
   const bio = String(formData.get('bio') || '').trim()
   const location = String(formData.get('location') || '').trim()
   const hiringInterests = String(formData.get('hiringInterests') || '').trim()
-  // Only accept a path this app produced, never an arbitrary URL.
+  // Only accept a value this app produced: a LOCAL `/uploads/<file>` path OR
+  // a Cloudinary secure_url. See normalizeStoredPhoto.
   const photoRaw = String(formData.get('profilePhoto') || '').trim()
-  const profilePhoto = /^\/uploads\/[\w.-]+$/.test(photoRaw) ? photoRaw : null
+  const profilePhoto = normalizeStoredPhoto(photoRaw)
   const experiences = parseExperiences(formData)
   const statusRaw = String(formData.get('recruitingStatus') || 'CURRENTLY_RECRUITING')
   const recruitingStatus =
