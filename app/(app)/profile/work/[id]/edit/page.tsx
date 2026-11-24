@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { WorkForm } from '@/components/work/NewWorkForm'
 import { aspectFromMetadata, parseAspect } from '@/lib/posts/aspect'
+import { BackIcon } from '@/components/icons'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,7 +41,9 @@ export default async function EditWorkPage({
   return (
     <div className="flex-1 min-w-0 min-h-screen p-4">
       <div className="page-header flex items-center gap-3">
-        <Link href={`/profile/work/${id}`} className="text-gray-500 hover:text-near-black text-lg leading-8">←</Link>
+        <Link href={`/profile/work/${id}`} aria-label="Back" className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-surface-sunken hover:text-near-black">
+          <BackIcon className="h-5 w-5" />
+        </Link>
         <h1 className="text-xl font-bold leading-8">Edit Work</h1>
       </div>
 

@@ -11,6 +11,7 @@ import { startBoost, type BoostFormState } from '@/app/(app)/profile/visibility/
 import { PostPickerModal } from '@/components/profile/PostPickerModal'
 import { CountryMultiSelect } from '@/components/ui/CountryMultiSelect'
 import { NumberInput } from '@/components/ui/NumberInput'
+import { ArrowIcon } from '@/components/icons'
 
 type Post = { id: string; title: string; image?: string | null }
 
@@ -141,9 +142,10 @@ export function BoostForm({
           <button
             type="button"
             onClick={() => setPickerOpen(true)}
-            className="mt-2 text-[13px] font-semibold text-ink hover:underline"
+            className="mt-2 inline-flex items-center gap-1 text-[13px] font-semibold text-ink hover:underline"
           >
-            All posts →
+            All posts
+            <ArrowIcon className="h-3.5 w-3.5" />
           </button>
         )}
       </div>

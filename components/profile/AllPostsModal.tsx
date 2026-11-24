@@ -33,10 +33,11 @@ export function AllPostsModal({
 }) {
   return (
     <Modal open={open} onClose={onClose} title="All posts" ariaLabel="All posts">
-      {/* Inner scroll, matching the Buy boosts popup: the title bar and the
-          panel itself stay fixed, and only the list moves. 60vh keeps the
-          modal comfortably inside the viewport on a laptop. */}
-      <ul className="scroll-hidden max-h-[60vh] divide-y divide-line overflow-y-auto">
+      {/* Mobile: the panel is full-screen and scrolls (see Modal), so the
+          list must NOT cap its height - a 60vh cap left the bottom of the
+          phone as a dead blocked area. Desktop keeps the inner scroll so the
+          rounded card stays a sensible size. */}
+      <ul className="scroll-hidden divide-y divide-line sm:max-h-[60vh] sm:overflow-y-auto">
         {rows.map((post) => (
           <li key={post.id} className="flex items-center gap-3 py-3">
             {post.image ? (

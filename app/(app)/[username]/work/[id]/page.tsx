@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { recordWorkView } from '@/lib/views/record-view'
 import { WorkDetailBody } from '@/components/work/WorkDetailBody'
+import { BackIcon } from '@/components/icons'
 
 export const dynamic = 'force-dynamic'
 
@@ -63,8 +64,9 @@ export default async function WorkDetailPage({
         <Link
           href={`/${authorHandle}`}
           className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-surface-sunken hover:text-ink"
+          aria-label="Back"
         >
-          ←
+          <BackIcon className="h-5 w-5" />
         </Link>
         <h1 className="text-xl font-bold leading-8 truncate">{post.title}</h1>
       </div>

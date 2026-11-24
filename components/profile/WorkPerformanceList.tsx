@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { AllPostsModal } from '@/components/profile/AllPostsModal'
+import { ArrowIcon } from '@/components/icons'
 
 type Row = {
   id: string
@@ -30,11 +31,10 @@ export function WorkPerformanceList({ rows }: { rows: Row[] }) {
 
   return (
     <>
-      {/* Inner scroll, so the Work performance card stays a fixed size and
-          the rows move instead of the whole page. Rows are ~4.5rem tall, so
-          14rem shows roughly three before scrolling. `scroll-hidden` keeps the
-          bar out of sight, matching the rest of the app. */}
-      <ul className="scroll-hidden max-h-[14rem] divide-y divide-line overflow-y-auto">
+      {/* Shows the first VISIBLE posts, no inner scroll: the card grows to fit
+          all of them. Anything beyond VISIBLE is reachable through "All posts",
+          which opens a popup that fills the phone screen and scrolls itself. */}
+      <ul className="divide-y divide-line">
         {shown.map((post) => (
           <li key={post.id} className="flex items-center gap-3 py-3">
             {post.image ? (
@@ -67,9 +67,10 @@ export function WorkPerformanceList({ rows }: { rows: Row[] }) {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="mt-3 text-[13px] font-semibold text-ink hover:underline"
+          className="mt-3 inline-flex items-center gap-1 text-[13px] font-semibold text-ink hover:underline"
         >
-          All posts →
+          All posts
+          <ArrowIcon className="h-3.5 w-3.5" />
         </button>
       )}
 

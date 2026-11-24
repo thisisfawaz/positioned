@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Modal } from '@/components/ui/Modal'
 import { initialsOf } from '@/lib/client/social'
+import { ChevronIcon } from '@/components/icons'
 
 /** One response (a fulfilled or pending DocumentRequest) for a post. */
 export type ResponseItem = {
@@ -86,7 +87,7 @@ export function ResponsesClient({ groups }: { groups: ResponseGroup[] }) {
               </span>
 
               <span className="flex-shrink-0 text-ink-subtle" aria-hidden="true">
-                ›
+                <ChevronIcon className="h-4 w-4" direction="right" />
               </span>
             </button>
           )

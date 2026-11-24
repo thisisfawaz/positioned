@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { prisma } from '@/lib/db'
 import { RecruitmentForm } from '@/components/recruitments/RecruitmentForm'
+import { BackIcon } from '@/components/icons'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,7 +23,9 @@ export default async function EditRecruitmentPage({
   return (
     <div className="flex-1 min-w-0 min-h-screen p-4">
       <div className="page-header flex items-center gap-3">
-        <Link href={`/recruitments/${r.id}`} className="text-gray-500 hover:text-near-black text-lg leading-8">←</Link>
+        <Link href={`/recruitments/${r.id}`} aria-label="Back" className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-surface-sunken hover:text-near-black">
+          <BackIcon className="h-5 w-5" />
+        </Link>
         <h1 className="text-xl font-bold leading-8">Edit role</h1>
       </div>
       <div className="p-3 max-w-2xl">

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { COUNTRIES, countryName } from '@/lib/geo/countries'
+import { ChevronIcon } from '@/components/icons'
 
 /**
  * Searchable multi-select for countries.
@@ -118,9 +119,9 @@ export function CountryMultiSelect({
             inputRef.current?.focus()
           }}
           aria-label={open ? 'Close country list' : 'Open country list'}
-          className="ml-2 flex-shrink-0 cursor-pointer text-[11px] text-ink-subtle"
+          className="ml-2 flex flex-shrink-0 cursor-pointer items-center text-ink-subtle"
         >
-          {open ? '▲' : '▼'}
+          <ChevronIcon className="h-3.5 w-3.5" direction={open ? 'up' : 'down'} />
         </button>
       </div>
 

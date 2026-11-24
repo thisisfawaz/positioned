@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import SignUpForm from '@/components/auth/SignUpForm'
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton'
+import { BackIcon } from '@/components/icons'
 
 type UserType = 'professional' | 'recruiter'
 
@@ -86,9 +87,10 @@ function SignUpContent() {
             <button
               type="button"
               onClick={() => setUserType(null)}
-              className="w-full text-sm text-gray-500 hover:text-near-black transition-colors mt-4"
+              className="mt-4 flex w-full items-center justify-center gap-1.5 text-sm text-gray-500 transition-colors hover:text-near-black"
             >
-              ← Change account type
+              <BackIcon className="h-4 w-4" />
+              Change account type
             </button>
 
             <div className="text-center text-sm text-gray-500 mt-4">
