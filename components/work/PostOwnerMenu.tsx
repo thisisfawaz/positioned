@@ -1,16 +1,22 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition } from 'react'
+import { createPortal } from 'react-dom'
 import { Modal } from '@/components/ui/Modal'
 import { updatePostText, deleteWorkPost } from '@/app/(app)/profile/work/actions'
 
 type AspectRatio = '9:16' | '16:9'
 
 /**
- * Owner-only 3-dots menu on a post. Opens a popup to EDIT the caption and the
- * orientation, or DELETE the post. Media links are NOT editable - the edit
- * action (updatePostText) only touches caption + the media asset's aspect, so
- * an existing image/video is never replaced or removed.
+ * Owner-only 3-dots menu on a post. Opens a small dropdown with Edit and
+ * Delete. Edit opens the edit Modal (caption + orientation); Delete opens the
+ * confirm Modal.
+ *
+ * THE DROPDOWN IS PORTALED TO document.body. The author bar it sits in has an
+ * inline `transform`, and a transformed ancestor becomes the containing block
+ * for `position: fixed` children - which made an in-tree dropdown position
+ * itself against the little header strip instead of the viewport, so it
+ * appeared behind the post. Portalling restores viewport positioning.
  */
 export function PostOwnerMenu({
   postId,
@@ -28,55 +34,88 @@ export function PostOwnerMenu({
   const [aspect, setAspect] = useState<AspectRatio>(initialAspect)
   const [pending, start] = useTransition()
   const [err, setErr] = useState<string | null>(null)
-  const menuRef = useRef<HTMLDivElement | null>(null)
+  const btnRef = useRef<HTMLButtonElement | null>(null)
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null)
 
-  // Close the dropdown on outside click or Escape.
+  // Anchor the dropdown under the dots, measured from the button's rect.
+  const openMenu = () => {
+    const r = btnRef.current?.getBoundingClientRect()
+    if (r) setPos({ top: r.bottom + 6, right: window.innerWidth - r.right })
+    setOpen(true)
+  }
+
   useEffect(() => {
     if (!open) return
     const onDown = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false)
+      const t = e.target as Node
+      if (btnRef.current?.contains(t)) return
+      if ((t as HTMLElement).closest?.('[data-owner-menu]')) return
+      setOpen(false)
     }
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    const onScroll = () => setOpen(false)
     document.addEventListener('mousedown', onDown)
     document.addEventListener('keydown', onKey)
+    window.addEventListener('scroll', onScroll, true)
     return () => {
       document.removeEventListener('mousedown', onDown)
       document.removeEventListener('keydown', onKey)
+      window.removeEventListener('scroll', onScroll, true)
     }
   }, [open])
 
   return (
-    <div className="relative" ref={menuRef}>
+    <>
       <button
+        ref={btnRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => (open ? setOpen(false) : openMenu())}
         aria-label="Post options"
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur hover:bg-white/30"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur hover:bg-white/30"
       >
         ⋯
       </button>
 
-      {open && (
-        <div className="absolute right-0 top-9 z-40 w-36 overflow-hidden rounded-xl border border-line bg-[var(--modal)] shadow-lg">
-          <button
-            type="button"
-            onClick={() => { setOpen(false); setEditing(true) }}
-            className="block w-full px-3 py-2 text-left text-[13px] text-ink hover:bg-surface-sunken"
+      {open &&
+        pos &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            data-owner-menu
+            role="menu"
+            style={{ position: 'fixed', top: pos.top, right: pos.right }}
+            className="z-[45] w-36 overflow-hidden rounded-xl border border-line bg-[var(--modal)] shadow-lg"
           >
-            Edit
-          </button>
-          <button
-            type="button"
-            onClick={() => { setOpen(false); setConfirmDel(true) }}
-            className="block w-full px-3 py-2 text-left text-[13px] text-rose-500 hover:bg-surface-sunken"
-          >
-            Delete
-          </button>
-        </div>
-      )}
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => { setOpen(false); setTimeout(() => setEditing(true), 0) }}
+              className="block w-full px-3 py-2 text-left text-[13px] text-ink hover:bg-surface-sunken"
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => { setOpen(false); setTimeout(() => setConfirmDel(true), 0) }}
+              className="block w-full border-t border-line px-3 py-2 text-left text-[13px] text-rose-500 hover:bg-surface-sunken"
+            >
+              Delete
+            </button>
+          </div>,
+          document.body
+        )}
 
-      <Modal open={editing} onClose={() => setEditing(false)} title="Edit post" ariaLabel="Edit post">
-        <div className="space-y-3">
+      <Modal
+        open={editing}
+        onClose={() => setEditing(false)}
+        title="Edit post"
+        ariaLabel="Edit post"
+        maxWidth="max-w-[520px]"
+      >
+        <div className="w-full flex-shrink-0 space-y-3 bg-[var(--modal)] text-ink" style={{minHeight: '40vh'}}>
           <label className="block text-[13px] font-medium text-ink">
             Caption
             <textarea
@@ -101,13 +140,19 @@ export function PostOwnerMenu({
                 </button>
               ))}
             </div>
-            <p className="mt-1 text-[11px] text-ink-subtle">Media itself can’t be changed here.</p>
+            <p className="mt-1 text-[11px] text-ink-subtle">Media itself can't be changed here.</p>
           </div>
 
           {err && <p className="text-[13px] text-rose-500">{err}</p>}
 
           <div className="flex justify-end gap-3 pt-1">
-            <button type="button" onClick={() => setEditing(false)} className="rounded-xl px-4 py-2 text-[13px] font-medium text-ink-muted">Cancel</button>
+            <button
+              type="button"
+              onClick={() => setEditing(false)}
+              className="rounded-xl px-4 py-2 text-[13px] font-medium text-ink-muted"
+            >
+              Cancel
+            </button>
             <button
               type="button"
               disabled={pending}
@@ -130,11 +175,23 @@ export function PostOwnerMenu({
         </div>
       </Modal>
 
-      <Modal open={confirmDel} onClose={() => setConfirmDel(false)} title="Delete post" ariaLabel="Delete post">
-        <p className="text-[14px] text-ink">Delete this post? This can’t be undone.</p>
+      <Modal
+        open={confirmDel}
+        onClose={() => setConfirmDel(false)}
+        title="Delete post"
+        ariaLabel="Delete post"
+        maxWidth="max-w-[420px]"
+      >
+        <p className="w-full flex-shrink-0 bg-[var(--modal)] text-[14px] text-ink" style={{minHeight: '20vh'}}>Delete this post? This can't be undone.</p>
         {err && <p className="mt-2 text-[13px] text-rose-500">{err}</p>}
         <div className="mt-4 flex justify-end gap-3">
-          <button type="button" onClick={() => setConfirmDel(false)} className="rounded-xl px-4 py-2 text-[13px] font-medium text-ink-muted">Cancel</button>
+          <button
+            type="button"
+            onClick={() => setConfirmDel(false)}
+            className="rounded-xl px-4 py-2 text-[13px] font-medium text-ink-muted"
+          >
+            Cancel
+          </button>
           <button
             type="button"
             disabled={pending}
@@ -152,6 +209,6 @@ export function PostOwnerMenu({
           </button>
         </div>
       </Modal>
-    </div>
+    </>
   )
 }

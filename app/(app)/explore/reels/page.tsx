@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/db'
+import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { ReelFeed } from '@/components/work/ReelFeed'
 
 export const dynamic = 'force-dynamic'
@@ -20,6 +21,11 @@ export default async function ExploreReelsPage({
   searchParams: Promise<{ post?: string }>
 }) {
   const { post } = await searchParams
+
+  // The viewer id gates the owner-only Edit/Delete menu on each card. Without
+  // it WorkCard's `viewerId &&` check is false, so owners saw no controls here
+  // even though the same card in the feed does show them.
+  const currentUser = await getCurrentUser()
 
   const posts = await prisma.workPost.findMany({
     where: {
@@ -56,6 +62,7 @@ export default async function ExploreReelsPage({
     <ReelFeed
       posts={entries as any}
       focusPostId={post ?? null}
+      viewerId={currentUser?.id}
       emptyMessage="Nothing to show yet."
     />
   )
