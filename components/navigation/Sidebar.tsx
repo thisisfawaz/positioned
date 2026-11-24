@@ -109,7 +109,12 @@ export function Sidebar() {
       </Link>
 
       {/* Profile pinned to bottom - avatar opens a menu with Sign out. */}
-      <ProfileMenu name={user?.name} subtitle={subtitle} profileHref={profileHref} />
+      <ProfileMenu
+        name={user?.name}
+        subtitle={subtitle}
+        profileHref={profileHref}
+        photo={user?.professionalProfile?.profilePhoto ?? user?.recruiterProfile?.profilePhoto ?? null}
+      />
     </aside>
   )
 }

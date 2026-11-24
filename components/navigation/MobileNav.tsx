@@ -39,6 +39,11 @@ export function MobileTopBar() {
   const [hidden, setHidden] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const pathname = usePathname()
+  const { user } = useUser()
+  const avatarSrc =
+    user?.professionalProfile?.profilePhoto ??
+    user?.recruiterProfile?.profilePhoto ??
+    null
 
   // Leaving a page must never carry its hidden state over: navs remount on
   // route change and previously inherited the reel's "hidden" event, so the
@@ -62,28 +67,42 @@ export function MobileTopBar() {
   return (
     <>
       <header
-        className={`fixed inset-x-0 top-0 z-30 flex items-center justify-between border-b border-line bg-white px-4 transition-transform duration-200 lg:hidden ${
+        className={`fixed inset-x-0 top-0 z-30 flex items-center justify-between border-b border-line bg-white px-4 transition-transform duration-200 lg:hidden relative ${
           hidden ? '-translate-y-full' : 'translate-y-0'
         }`}
         style={{ height: 'var(--topbar-h)' }}
       >
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setDrawerOpen(true)}
-            aria-label="Open menu"
-            className="-ml-1 flex h-9 w-9 items-center justify-center rounded-xl text-ink-muted"
-          >
+        {/* Left: the user's profile photo doubles as the menu button. */}
+        <button
+          type="button"
+          onClick={() => setDrawerOpen(true)}
+          aria-label="Open menu"
+          className="-ml-1 flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-light text-[12px] font-bold text-ink"
+        >
+          {avatarSrc ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatarSrc} alt={user?.name ?? 'Profile'} className="h-full w-full object-cover" />
+          ) : user?.name ? (
+            initialsOf(user.name)
+          ) : (
             <MenuIcon className="h-[21px] w-[21px]" />
-          </button>
-          <Link href="/feed" prefetch className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-[15px] font-bold text-white">
-              P
-            </span>
-            <span className="text-[16px] font-bold tracking-tight text-ink">Positioned</span>
-          </Link>
-        </div>
+          )}
+        </button>
 
+        {/* Center: brand mark, absolutely centered so it stays put regardless
+            of the asymmetric side content. */}
+        <Link
+          href="/feed"
+          prefetch
+          className="absolute left-1/2 flex -translate-x-1/2 items-center gap-2"
+        >
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-[15px] font-bold text-white">
+            P
+          </span>
+          <span className="text-[16px] font-bold tracking-tight text-ink">Positioned</span>
+        </Link>
+
+        {/* Right: search. */}
         <div className="flex items-center gap-1">
           <Link
             href="/explore"
@@ -182,7 +201,12 @@ function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void })
         </nav>
 
         <div className="border-t border-line p-2">
-          <ProfileMenu name={user?.name} subtitle={subtitle} profileHref={profileHref} />
+          <ProfileMenu
+            name={user?.name}
+            subtitle={subtitle}
+            profileHref={profileHref}
+            photo={user?.professionalProfile?.profilePhoto ?? user?.recruiterProfile?.profilePhoto ?? null}
+          />
         </div>
       </div>
     </div>
@@ -242,14 +266,14 @@ export function MobileBottomNav() {
         </span>
       </CreatePostTrigger>
 
-      <Link href="/messages" prefetch className={tabClass('/messages')}>
-        <ChatIcon className="h-[21px] w-[21px]" />
-        Messages
-      </Link>
-
       <Link href="/profile/notifications" prefetch className={tabClass('/profile/notifications')}>
         <BellIcon className="h-[21px] w-[21px]" />
         Notifications
+      </Link>
+
+      <Link href="/messages" prefetch className={tabClass('/messages')}>
+        <ChatIcon className="h-[21px] w-[21px]" />
+        Messages
       </Link>
     </nav>
   )

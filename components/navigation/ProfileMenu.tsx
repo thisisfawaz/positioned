@@ -22,10 +22,12 @@ export function ProfileMenu({
   name,
   subtitle,
   profileHref,
+  photo,
 }: {
   name: string | null | undefined
   subtitle: string
   profileHref: string
+  photo?: string | null
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -67,7 +69,14 @@ export function ProfileMenu({
         className="flex w-full items-center gap-3 rounded-xl px-1 py-2 transition-colors hover:bg-surface-sunken"
       >
         <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-light text-[12px] font-bold text-ink">
-          {name ? initialsOf(name) : <UserIcon className="h-4 w-4" />}
+          {photo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={photo} alt={name ?? 'Profile'} className="h-full w-full object-cover" />
+          ) : name ? (
+            initialsOf(name)
+          ) : (
+            <UserIcon className="h-4 w-4" />
+          )}
         </span>
         <span className="hidden min-w-0 flex-1 text-left xl:block">
           <span className="block truncate text-[14px] font-semibold text-ink">
