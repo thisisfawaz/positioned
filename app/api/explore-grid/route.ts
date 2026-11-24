@@ -129,9 +129,9 @@ export async function GET(req: Request) {
     //
     // Layer 1 (`day`): the viewer's local day, minus recruitments, images only,
     //   with the search filter. Random order, capped at DAILY_CAP.
-    // Layer 2: page within that capped set, in the SAME seeded order for
-    //   `new` (so paging is consistent), or in the requested metric order for
-    //   `liked`/`viewed`.
+    // Layer 2 (`older`): the same filters for posts BEFORE today, randomly
+    //   ordered under the same seed, excluding ids already in `day`.
+    // Layer 3: page within the combined pool, today's posts first (`kind`).
     // Quoted identifiers are required: the columns are camelCase and Postgres
     // folds unquoted names to lower case.
     const searchClause = q
@@ -152,6 +152,11 @@ export async function GET(req: Request) {
       ? Prisma.sql`AND "id" <> ${cursorPostId}`
       : Prisma.empty
 
+    // The day tier is preferred. If the viewer's local day has FEWER than
+    // DAILY_CAP matching posts (including zero), the remaining slots are
+    // FILLED from other days, also randomly under the same seed. `kind` orders
+    // day posts first so the mix is deterministic: today's sample leads, older
+    // random posts pad the tail.
     const rows = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
       WITH day AS (
         SELECT "id"
@@ -168,10 +173,31 @@ export async function GET(req: Request) {
           ${mediaClause}
         ORDER BY md5("id" || ${seed}) ASC
         LIMIT ${DAILY_CAP}
+      ),
+      older AS (
+        SELECT "id"
+        FROM "WorkPost"
+        WHERE "status" = 'PUBLISHED'
+          AND "professionalId" IS NOT NULL
+          AND "recruiterProfileId" IS NULL
+          AND "createdAt" < ${start}
+          AND EXISTS (
+            SELECT 1 FROM "MediaAsset" m WHERE m."workPostId" = "WorkPost"."id"
+          )
+          ${searchClause}
+          ${mediaClause}
+          AND "id" NOT IN (SELECT "id" FROM day)
+        ORDER BY md5("id" || ${seed}) ASC
+        LIMIT ${DAILY_CAP}
+      ),
+      pool AS (
+        SELECT "id", 0 AS kind FROM day
+        UNION ALL
+        SELECT "id", 1 AS kind FROM older
       )
-      SELECT "id" FROM day
+      SELECT "id" FROM pool
       WHERE 1=1 ${cursorClause}
-      ORDER BY ${orderClause}
+      ORDER BY kind ASC, ${orderClause}
       LIMIT ${take + 1}
     `)
 
