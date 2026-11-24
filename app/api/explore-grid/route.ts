@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
@@ -33,7 +34,10 @@ export async function GET(req: Request) {
   const sortParam = searchParams.get('sort') ?? 'new'
   const sort = sortParam === 'liked' || sortParam === 'viewed' ? sortParam : 'new'
   const mediaParam = searchParams.get('media') ?? 'all'
-  const media = mediaParam === 'image' || mediaParam === 'video' ? mediaParam : 'all'
+  // Only 'all' and 'image' for now. Uploaded VIDEO is not enabled yet - the
+  // PostMediaType.VIDEO enum value has not been applied to the database (see
+  // supabase/036), so referencing it would error at runtime.
+  const media = mediaParam === 'image' ? mediaParam : 'all'
 
   // ORDER BY per sort mode. A UNIQUE tiebreaker (id) is mandatory for cursor
   // pagination - without it two rows sharing a value could be skipped or
@@ -49,7 +53,7 @@ export async function GET(req: Request) {
   // author's name/username, their professional title, and the post title /
   // caption. Case-insensitive. Applied SERVER-SIDE so it searches every post,
   // not just the batch already loaded in the grid.
-  const searchWhere = q
+  const searchWhere: Prisma.WorkPostWhereInput = q
     ? {
         OR: [
           { title: { contains: q, mode: 'insensitive' as const } },
@@ -61,16 +65,13 @@ export async function GET(req: Request) {
       }
     : {}
 
-  // Media-type filter. "image" = has at least one MediaAsset; "video" = a
-  // YouTube embed (mediaType VIDEO / videoUrl set). Explore's grid only renders
-  // images today, so "video" filters to those posts but they render as tiles
-  // via the existing image field when a poster exists.
-  const mediaWhere =
+  // Media-type filter. "image" = has at least one MediaAsset; "all" is the
+  // same today (Explore only renders image tiles). Video filtering is deferred
+  // until the VIDEO enum exists in the database.
+  const mediaWhere: Prisma.WorkPostWhereInput =
     media === 'image'
       ? { mediaAssets: { some: {} } }
-      : media === 'video'
-        ? { OR: [{ mediaType: 'VIDEO' as const }, { videoUrl: { not: null } }] }
-        : { mediaAssets: { some: {} } }
+      : { mediaAssets: { some: {} } }
 
   // Fetch one extra row so we can tell whether another page exists without a
   // separate count query.
@@ -80,7 +81,7 @@ export async function GET(req: Request) {
     // Resolve the cursor post's sort key. Both sort keys matter because
     // `createdAt` is not unique - two posts in the same millisecond must not
     // cause a skipped or duplicated tile across a page boundary.
-    let cursorWhere = {}
+    let cursorWhere: Prisma.WorkPostWhereInput = {}
     if (cursor) {
       const anchor = await prisma.workPost.findUnique({
         where: { id: cursor },
@@ -114,20 +115,22 @@ export async function GET(req: Request) {
       }
     }
 
-    const posts = await prisma.workPost.findMany({
-      where: {
-        status: 'PUBLISHED',
-        professionalId: { not: null },
-        recruiterProfileId: null,
-        ...mediaWhere,
-        professional: {
-          user: {
-            OR: [{ settings: { is: null } }, { settings: { is: { profileVisible: true } } }],
-          },
+    const where: Prisma.WorkPostWhereInput = {
+      status: 'PUBLISHED',
+      professionalId: { not: null },
+      recruiterProfileId: null,
+      ...mediaWhere,
+      professional: {
+        user: {
+          OR: [{ settings: { is: null } }, { settings: { is: { profileVisible: true } } }],
         },
-        ...searchWhere,
-        ...cursorWhere,
       },
+      ...searchWhere,
+      ...cursorWhere,
+    }
+
+    const posts = await prisma.workPost.findMany({
+      where,
       orderBy,
       take: fetchCount,
       select: {

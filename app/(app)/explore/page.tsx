@@ -15,10 +15,11 @@ const SORTS = [
 ] as const
 
 /** Media-type options. These map 1:1 to the API's `media` param. */
+// Video is intentionally absent: uploaded video is not enabled yet (the
+// PostMediaType.VIDEO enum has not been applied to the database).
 const MEDIA = [
   { id: 'all', label: 'All media' },
   { id: 'image', label: 'Images' },
-  { id: 'video', label: 'Video' },
 ] as const
 
 const DEFAULT_SORT = 'new'
