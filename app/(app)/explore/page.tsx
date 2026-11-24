@@ -8,10 +8,13 @@ import { Modal } from '@/components/ui/Modal'
 import { SearchIcon, SlidersIcon, CheckIcon } from '@/components/icons'
 
 /** Sort options. These map 1:1 to the API's `sort` param. */
+// There is no "Newest" option: the default (no sort chosen) IS the daily
+// random shuffle, which is what makes Explore show a random 100 of today.
+// These options reorder WITHIN that random sample of the day's posts.
 const SORTS = [
-  { id: 'new', label: 'Newest' },
   { id: 'liked', label: 'Most liked' },
   { id: 'viewed', label: 'Most viewed' },
+  { id: 'saved', label: 'Most saved' },
 ] as const
 
 /** Media-type options. These map 1:1 to the API's `media` param. */
@@ -22,7 +25,7 @@ const MEDIA = [
   { id: 'image', label: 'Images' },
 ] as const
 
-const DEFAULT_SORT = 'new'
+const DEFAULT_SORT = ''
 const DEFAULT_MEDIA = 'all'
 
 /**
@@ -52,7 +55,20 @@ export default function ExplorePage() {
     }
   }, [query])
 
-  const params = new URLSearchParams({ take: '48' })
+  // The viewer's IANA timezone scopes "today" to THEIR local day, not UTC.
+  // Resolved in an effect so the server render does not read a browser API;
+  // until then it falls back to UTC and the key updates once on mount.
+  const [tz, setTz] = useState('UTC')
+  useEffect(() => {
+    try {
+      const z = Intl.DateTimeFormat().resolvedOptions().timeZone
+      if (z) setTz(z)
+    } catch {
+      // keep UTC
+    }
+  }, [])
+
+  const params = new URLSearchParams({ take: '48', tz })
   if (debouncedQuery) params.set('q', debouncedQuery)
   if (sort !== DEFAULT_SORT) params.set('sort', sort)
   if (media !== DEFAULT_MEDIA) params.set('media', media)
@@ -65,6 +81,8 @@ export default function ExplorePage() {
 
   const activeCount =
     (sort !== DEFAULT_SORT ? 1 : 0) + (media !== DEFAULT_MEDIA ? 1 : 0)
+
+  // Clicking the active sort again clears it, returning to the daily shuffle.
 
   return (
     <div className="w-full pb-6">
@@ -152,7 +170,7 @@ export default function ExplorePage() {
                   key={s.id}
                   label={s.label}
                   active={sort === s.id}
-                  onClick={() => setSort(s.id)}
+                  onClick={() => setSort(sort === s.id ? DEFAULT_SORT : s.id)}
                 />
               ))}
             </div>

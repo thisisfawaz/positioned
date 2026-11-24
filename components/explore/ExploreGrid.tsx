@@ -143,15 +143,28 @@ export function ExploreGrid({
 
   // Fetch the next page. Guarded by a ref so overlapping observer callbacks
   // cannot fire two requests for the same cursor.
+  // The seed is issued by the FIRST page and carried in every cursor, so all
+  // pages of one visit share the same shuffle. Stored in a ref because it must
+  // not trigger a re-render or an effect re-run.
+  const seedRef = useRef<string | null>(null)
+  if (seedRef.current === null && initialCursor && initialCursor.includes('|')) {
+    seedRef.current = initialCursor.split('|')[0]
+  }
+
   const loadMore = useCallback(async () => {
     if (loadingRef.current || !cursor) return
     loadingRef.current = true
     setLoadingMore(true)
     try {
-      const params = new URLSearchParams({ take: '48', cursor })
+      const tz =
+        typeof Intl !== 'undefined'
+          ? Intl.DateTimeFormat().resolvedOptions().timeZone
+          : 'UTC'
+      const params = new URLSearchParams({ take: '48', cursor, tz })
       if (query.trim()) params.set('q', query.trim())
       if (sort) params.set('sort', sort)
       if (media) params.set('media', media)
+      if (seedRef.current) params.set('seed', seedRef.current)
       const res = await fetch(`/api/explore-grid?${params.toString()}`)
       if (!res.ok) throw new Error('Fetch failed')
       const data: { items: GridItem[]; nextCursor: string | null } = await res.json()

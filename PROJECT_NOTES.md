@@ -3564,3 +3564,11 @@ Old state: category chips matched a SUBSTRING against the author's job title (no
 ### Known gaps from this session
 - `media=video` posts have no MediaAsset, so their tile shows the initials fallback (no poster frame).
 - `sort=liked|viewed` reorders results but tiles do not display likes/views, so the ordering is invisible in the UI.
+
+### Explore: daily random 100 (session follow-up)
+- Explore no longer lists every post. It shows a **random sample capped at 100** drawn from **the viewer's LOCAL day** (client sends `tz`, an IANA name; invalid/absent -> UTC). `localDayWindow()` in the route computes `[local midnight, +24h)` in UTC by reading the zone offset at LOCAL NOON (DST-safe), not at midnight.
+- **New visit = new random 100.** The shuffle seed is generated per request when no seed is supplied, returned as `seed`, and carried in the cursor as `<seed>|<postId>` so all pages of ONE visit share the same ordering. Without that, paging would reshuffle and tiles would repeat/vanish.
+- **Filters apply BEFORE the cap:** search (`q`) and media narrow the day's set, then the random 100 is taken from the MATCHING posts. A narrow search returns every match (even 12), not a random 100 of a filtered pool.
+- Implementation is a single raw `$queryRaw` with a `day` CTE: filters + `ORDER BY md5("id" || seed)` + `LIMIT 100`; the outer query pages within that capped set. Quoted camelCase identifiers are mandatory (Postgres folds unquoted names to lower case). Rows are hydrated with `findMany`, then RE-ORDERED in JS by the id list, because `IN()` does not preserve order.
+- **Sort options changed:** "Newest" was REMOVED (the default IS the random shuffle). Options are now **Most liked / Most viewed / Most saved**, mapping to `likes` / `views` / `saves`. Clicking the active option again clears it and returns to the shuffle. There is no `shares` column on `WorkPost`, so "Most shared" was not possible.
+- `<` DAILY_CAP posts today returns whatever exists; zero returns an empty grid (no fallback to older days - explicit product decision).

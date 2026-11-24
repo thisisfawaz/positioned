@@ -7,135 +7,187 @@ export const dynamic = 'force-dynamic'
 /**
  * Grid feed for Explore.
  *
- * Returns ACTUAL POSTS, not profiles. The earlier version returned one row per
- * professional profile and rendered `image: null` tiles for anyone without a
- * published post - which is why the grid looked like a wall of random
- * usernames. This queries WorkPost directly so every tile is real content.
+ * WHAT IT SHOWS: a random sample of TODAY's posts, capped at DAILY_CAP, where
+ * "today" is the VIEWER's local day (the client sends its IANA timezone as
+ * `tz`, defaulting to UTC). With 2000 posts published today, Explore returns a
+ * random 100 of them; open Explore again and a DIFFERENT random 100 is chosen.
+ * Fewer than 100 posts today simply returns whatever exists (possibly none).
+ *
+ * FILTERS APPLY FIRST: search (`q`) and media type narrow the day's set, then
+ * the random cap applies to the MATCHING posts. A narrow search therefore
+ * returns every match (even if only 12), not a random 100 of a filtered pool.
+ *
+ * PAGINATION WITHIN THE SAMPLE: the random ORDER is stable for one visit only.
+ * The seed that produced it travels with the cursor (`<seed>|<postId>`) so the
+ * next page continues the SAME ordering. Without that each page would reshuffle
+ * and tiles would repeat or vanish.
  *
  * RECRUITMENTS ARE EXCLUDED. A post belongs to a professional when
- * `professionalId` is set and `recruiterProfileId` is not. Recruiter-owned
- * posts never appear in Explore; they only surface inside the feed reels.
+ * `professionalId` is set and `recruiterProfileId` is not.
  *
  * Only posts with at least one media asset are included - Explore is a visual
- * grid, so a post without media has nothing to show and is skipped rather than
- * rendered as an empty tile.
- *
- * PAGINATION: cursor-based on `createdAt desc, id desc`. Pass `?cursor=<postId>`
- * (the id of the LAST item on the previous page) to get the next page. The
- * response carries `nextCursor` (null once every post has been returned), so the
- * client can keep scrolling until the end. `?take` is the page size (max 60);
- * `?take=48` on the first request is Explore's initial batch.
+ * grid, so a post without media has nothing to show.
  */
+
+/** Max tiles Explore will show from a single day. */
+const DAILY_CAP = 100
+
+/**
+ * The [start, end) UTC instants of the viewer's LOCAL day.
+ *
+ * `timeZone` is an IANA name (e.g. "Europe/London"); an invalid one falls back
+ * to UTC rather than throwing. The offset is read at LOCAL NOON, where a normal
+ * zone cannot be mid-transition, which keeps the result DST-safe.
+ */
+function localDayWindow(timeZone: string): { start: Date; end: Date } {
+  let tz = timeZone
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: tz })
+  } catch {
+    tz = 'UTC'
+  }
+
+  const now = new Date()
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(now)
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? ''
+  const y = Number(get('year'))
+  const m = Number(get('month'))
+  const d = Number(get('day'))
+
+  // Use NOON of the local day as the reference point so the offset lookup is
+  // never inside a DST transition.
+  const noonUtc = Date.UTC(y, m - 1, d, 12, 0, 0)
+
+  // What the zone's wall clock reads at that UTC instant, expressed as if it
+  // were UTC. The difference is the zone's offset at that moment.
+  const zoneParts = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date(noonUtc))
+  const zg = (t: string) => Number(zoneParts.find((p) => p.type === t)?.value ?? '0')
+  const zoneAsUtc = Date.UTC(
+    zg('year'),
+    zg('month') - 1,
+    zg('day'),
+    zg('hour') % 24,
+    zg('minute'),
+    zg('second')
+  )
+  const offsetMs = zoneAsUtc - noonUtc
+
+  const localMidnightUtc = Date.UTC(y, m - 1, d, 0, 0, 0) - offsetMs
+  return {
+    start: new Date(localMidnightUtc),
+    end: new Date(localMidnightUtc + 24 * 60 * 60 * 1000),
+  }
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const take = Math.max(1, Math.min(Number(searchParams.get('take') ?? 48) || 48, 60))
   const cursor = searchParams.get('cursor')
   const q = (searchParams.get('q') ?? '').trim()
-  const sortParam = searchParams.get('sort') ?? 'new'
-  const sort = sortParam === 'liked' || sortParam === 'viewed' ? sortParam : 'new'
+  // No sort = the daily random shuffle (the default). 'saved' orders by the
+  // saves counter; there is no 'new'/chronological mode - Explore is a sample
+  // of the day, not a reverse-chronological list.
+  const sortParam = searchParams.get('sort') ?? ''
+  const sort =
+    sortParam === 'liked' || sortParam === 'viewed' || sortParam === 'saved'
+      ? sortParam
+      : ''
   const mediaParam = searchParams.get('media') ?? 'all'
-  // Only 'all' and 'image' for now. Uploaded VIDEO is not enabled yet - the
-  // PostMediaType.VIDEO enum value has not been applied to the database (see
-  // supabase/036), so referencing it would error at runtime.
   const media = mediaParam === 'image' ? mediaParam : 'all'
+  const tz = searchParams.get('tz') ?? 'UTC'
 
-  // ORDER BY per sort mode. A UNIQUE tiebreaker (id) is mandatory for cursor
-  // pagination - without it two rows sharing a value could be skipped or
-  // repeated across a page boundary.
-  const orderBy =
-    sort === 'liked'
-      ? [{ likes: 'desc' as const }, { id: 'desc' as const }]
-      : sort === 'viewed'
-        ? [{ views: 'desc' as const }, { id: 'desc' as const }]
-        : [{ createdAt: 'desc' as const }, { id: 'desc' as const }]
+  // The cursor carries `<seed>|<postId>` so paging continues the SAME shuffle.
+  // A bare cursor (no seed) is tolerated for older clients.
+  let seed = searchParams.get('seed') ?? ''
+  let cursorPostId = cursor
+  if (cursor && cursor.includes('|')) {
+    const [cSeed, cId] = cursor.split('|')
+    if (cSeed) seed = cSeed
+    cursorPostId = cId
+  }
+  if (!seed) seed = Math.random().toString(36).slice(2, 10)
 
-  // Free-text search across the fields a user actually sees on a tile: the
-  // author's name/username, their professional title, and the post title /
-  // caption. Case-insensitive. Applied SERVER-SIDE so it searches every post,
-  // not just the batch already loaded in the grid.
-  const searchWhere: Prisma.WorkPostWhereInput = q
-    ? {
-        OR: [
-          { title: { contains: q, mode: 'insensitive' as const } },
-          { caption: { contains: q, mode: 'insensitive' as const } },
-          { professional: { title: { contains: q, mode: 'insensitive' as const } } },
-          { professional: { user: { name: { contains: q, mode: 'insensitive' as const } } } },
-          { professional: { user: { username: { contains: q, mode: 'insensitive' as const } } } },
-        ],
-      }
-    : {}
-
-  // Media-type filter. "image" = has at least one MediaAsset; "all" is the
-  // same today (Explore only renders image tiles). Video filtering is deferred
-  // until the VIDEO enum exists in the database.
-  const mediaWhere: Prisma.WorkPostWhereInput =
-    media === 'image'
-      ? { mediaAssets: { some: {} } }
-      : { mediaAssets: { some: {} } }
-
-  // Fetch one extra row so we can tell whether another page exists without a
-  // separate count query.
-  const fetchCount = take + 1
+  const { start, end } = localDayWindow(tz)
 
   try {
-    // Resolve the cursor post's sort key. Both sort keys matter because
-    // `createdAt` is not unique - two posts in the same millisecond must not
-    // cause a skipped or duplicated tile across a page boundary.
-    let cursorWhere: Prisma.WorkPostWhereInput = {}
-    if (cursor) {
-      const anchor = await prisma.workPost.findUnique({
-        where: { id: cursor },
-        select: { createdAt: true, likes: true, views: true, id: true },
-      })
-      if (anchor) {
-        // The cursor comparison MUST mirror the active orderBy, otherwise
-        // sorting by likes but paging by createdAt skips rows.
-        if (sort === 'liked') {
-          cursorWhere = {
-            OR: [
-              { likes: { lt: anchor.likes } },
-              { likes: anchor.likes, id: { lt: anchor.id } },
-            ],
-          }
-        } else if (sort === 'viewed') {
-          cursorWhere = {
-            OR: [
-              { views: { lt: anchor.views } },
-              { views: anchor.views, id: { lt: anchor.id } },
-            ],
-          }
-        } else {
-          cursorWhere = {
-            OR: [
-              { createdAt: { lt: anchor.createdAt } },
-              { createdAt: anchor.createdAt, id: { lt: anchor.id } },
-            ],
-          }
-        }
-      }
+    // The whole selection runs in ONE raw query so the seeded shuffle, the
+    // DAILY_CAP and the cursor all apply in the database.
+    //
+    // Layer 1 (`day`): the viewer's local day, minus recruitments, images only,
+    //   with the search filter. Random order, capped at DAILY_CAP.
+    // Layer 2: page within that capped set, in the SAME seeded order for
+    //   `new` (so paging is consistent), or in the requested metric order for
+    //   `liked`/`viewed`.
+    // Quoted identifiers are required: the columns are camelCase and Postgres
+    // folds unquoted names to lower case.
+    const searchClause = q
+      ? Prisma.sql`AND ("title" ILIKE ${'%' + q + '%'} OR "caption" ILIKE ${'%' + q + '%'})`
+      : Prisma.empty
+    const mediaClause = media === 'image' ? Prisma.empty : Prisma.empty
+
+    const orderClause =
+      sort === 'liked'
+        ? Prisma.sql`"likes" DESC, "id" DESC`
+        : sort === 'viewed'
+          ? Prisma.sql`"views" DESC, "id" DESC`
+          : sort === 'saved'
+            ? Prisma.sql`"saves" DESC, "id" DESC`
+            : Prisma.sql`md5("id" || ${seed}) ASC`
+
+    const cursorClause = cursorPostId
+      ? Prisma.sql`AND "id" <> ${cursorPostId}`
+      : Prisma.empty
+
+    const rows = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      WITH day AS (
+        SELECT "id"
+        FROM "WorkPost"
+        WHERE "status" = 'PUBLISHED'
+          AND "professionalId" IS NOT NULL
+          AND "recruiterProfileId" IS NULL
+          AND "createdAt" >= ${start}
+          AND "createdAt" < ${end}
+          AND EXISTS (
+            SELECT 1 FROM "MediaAsset" m WHERE m."workPostId" = "WorkPost"."id"
+          )
+          ${searchClause}
+          ${mediaClause}
+        ORDER BY md5("id" || ${seed}) ASC
+        LIMIT ${DAILY_CAP}
+      )
+      SELECT "id" FROM day
+      WHERE 1=1 ${cursorClause}
+      ORDER BY ${orderClause}
+      LIMIT ${take + 1}
+    `)
+
+    const pageIds = rows.slice(0, take).map((r) => r.id)
+    const hasMore = rows.length > take
+
+    if (pageIds.length === 0) {
+      return NextResponse.json({ items: [], nextCursor: null, seed })
     }
 
-    const where: Prisma.WorkPostWhereInput = {
-      status: 'PUBLISHED',
-      professionalId: { not: null },
-      recruiterProfileId: null,
-      ...mediaWhere,
-      professional: {
-        user: {
-          OR: [{ settings: { is: null } }, { settings: { is: { profileVisible: true } } }],
-        },
-      },
-      ...searchWhere,
-      ...cursorWhere,
-    }
-
+    // Hydrate the page, then re-order in JS to match pageIds: findMany does not
+    // preserve the order of an IN() list, and the shuffle order matters here.
     const posts = await prisma.workPost.findMany({
-      where,
-      orderBy,
-      take: fetchCount,
+      where: { id: { in: pageIds } },
       select: {
         id: true,
-        caption: true,
         title: true,
         createdAt: true,
         likes: true,
@@ -157,37 +209,36 @@ export async function GET(req: Request) {
       },
     })
 
-    const hasMore = posts.length > take
-    const pagePosts = hasMore ? posts.slice(0, take) : posts
+    const byId = new Map(posts.map((p) => [p.id, p]))
+    const items = pageIds
+      .map((id) => byId.get(id))
+      .filter((p): p is NonNullable<typeof p> => Boolean(p))
+      .map((post) => {
+        const asset = post.mediaAssets[0]
+        const prof = post.professional
+        const user = prof?.user
+        return {
+          id: post.id,
+          postId: post.id,
+          userId: user?.id ?? '',
+          name: user?.name ?? 'Unknown',
+          username: user?.username ?? null,
+          title: prof?.title ?? null,
+          profilePhoto: prof?.profilePhoto ?? null,
+          image: asset
+            ? /^https?:\/\//i.test(asset.providerAssetId)
+              ? asset.providerAssetId
+              : `/uploads/${asset.providerAssetId}`
+            : null,
+        }
+      })
 
-    const items = pagePosts.map((post) => {
-      const asset = post.mediaAssets[0]
-      const prof = post.professional
-      const user = prof?.user
-      return {
-        // One tile PER POST now, so the tile id is the post id.
-        id: post.id,
-        postId: post.id,
-        userId: user?.id ?? '',
-        name: user?.name ?? 'Unknown',
-        username: user?.username ?? null,
-        title: prof?.title ?? null,
-        profilePhoto: prof?.profilePhoto ?? null,
-        // providerAssetId may be a bare LOCAL filename OR a full external URL.
-        // Prefixing blindly produced `/uploads/https://...`, which never loads.
-        image: asset
-          ? /^https?:\/\//i.test(asset.providerAssetId)
-            ? asset.providerAssetId
-            : `/uploads/${asset.providerAssetId}`
-          : null,
-      }
-    })
+    const nextCursor =
+      hasMore && pageIds.length > 0 ? `${seed}|${pageIds[pageIds.length - 1]}` : null
 
-    const nextCursor = hasMore ? pagePosts[pagePosts.length - 1]?.id ?? null : null
-
-    return NextResponse.json({ items, nextCursor })
+    return NextResponse.json({ items, nextCursor, seed })
   } catch (err) {
     console.error('[explore-grid] failed:', err)
-    return NextResponse.json({ items: [], nextCursor: null })
+    return NextResponse.json({ items: [], nextCursor: null, seed })
   }
 }
