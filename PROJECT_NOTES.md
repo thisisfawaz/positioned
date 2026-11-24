@@ -3518,3 +3518,49 @@ Reference: `Screenshot 2026-11-04 155409.png` (HelpBnk).
 - Verified against the live database with `scripts/check-all-rls.js`: **25 public tables, 0 with RLS disabled.** Every table has row-level security enabled.
 - The gap those entries described was closed at some point outside this log. Ignore the old warnings; this section supersedes them.
 - LESSON: a note saying "may be unrestricted" is a snapshot of a past state, not a standing fact. Re-check before repeating it as a current risk - otherwise the log starts producing false alarms, which is worse than having no log.
+
+---
+
+## Session: Navigation, arrows, visibility & Explore filters
+
+### Mobile navigation (`components/navigation/MobileNav.tsx`)
+- Bottom tab order is now **Home, Explore, Create (raised), Notifications, Messages** - Messages and Notifications were SWAPPED at the user's request.
+- Mobile top bar: the brand mark is ABSOLUTELY centred (`absolute left-1/2 -translate-x-1/2`) so it stays put regardless of side content.
+- Top-left hamburger was REPLACED by the user's profile photo (initials fallback, `MenuIcon` if no name). It still opens the drawer.
+- The header must stay `fixed`. A stray `relative` class was added to centre the logo and OVERRODE `fixed` (both are `position` utilities and `relative` is emitted later), so the bar sat IN FLOW and pushed every page down by its own height ON TOP OF `.app-main`'s `padding-top: var(--topbar-h)` - a ~80px dead gap under the bar. Remove the `relative`; `fixed` already establishes the containing block the absolute logo needs.
+
+### Profile avatar everywhere (`ProfileMenu.tsx`, `Sidebar.tsx`, `MobileNav.tsx`)
+- `ProfileMenu` gained an optional `photo` prop. It renders `<img>` when set, otherwise initials, otherwise `UserIcon`.
+- Both callers pass `user.professionalProfile.profilePhoto ?? user.recruiterProfile.profilePhoto`.
+
+### Arrow glyphs -> SVG (`components/icons.tsx`)
+Every text arrow was replaced with a real icon; there are NO arrow glyphs left in the app.
+- `←` back links -> `BackIcon` + `aria-label="Back"` (recruitments detail, work detail, professionals profile, recruitments edit/new, work edit/new, requests fulfil, signup "Change account type").
+- `All posts →` -> `ArrowIcon` (BoostForm, WorkPerformanceList).
+- `›` -> `ChevronIcon direction="right"` (ResponsesClient).
+- `▲`/`▼` -> `ChevronIcon direction={open ? 'up' : 'down'}` (CountryMultiSelect).
+
+### Visibility page (`app/(app)/profile/visibility/page.tsx`)
+- **Work performance** (`WorkPerformanceList.tsx`): the inner `max-h-[14rem] overflow-y-auto` scroll was REMOVED. It shows all 4 items and the card grows to fit. "All posts" opens the modal for the rest.
+- **Boost Visibility** (`PremiumBoostForm.tsx`): the card now previews the first 4 posts (`VISIBLE_POSTS = 4`) and shows an **All posts** button when there are more. That opens a `Modal` listing every post.
+- Selected label reads **"Boosting"** (was "Boosted") and is `text-brand dark:text-white`.
+- "Save boost selection" sits directly UNDER the All posts button (not right-aligned), with error/message text below it.
+- **Full-screen modals:** both `AllPostsModal` and the boost All-posts modal previously capped their `<ul>` at `max-h-[60vh]`, which on mobile left a dead blocked area at the bottom. Both now use `sm:max-h-[60vh] sm:overflow-y-auto` - no cap on mobile, so the full-screen `Modal` panel scrolls the whole list. Desktop keeps the capped inner scroll.
+
+### Mobile page top spacing
+- The `fixed` top bar is out of flow; `.app-main` in `app/globals.css` pads by `--topbar-h`. Pages additionally had `pt-2` (8px), stacking a redundant gap. Removed `pt-2` from: explore, list, premium, profile/notifications, profile/saved-work, profile/visibility, responses, settings. Desktop `lg:pt-6` is unchanged.
+- Pages still on the older `min-h-screen p-4` container pattern (billing, professionals/[id], recruitments*, work*) keep their `p-4`; not changed.
+
+### Explore filters (real ones)
+Old state: category chips matched a SUBSTRING against the author's job title (no taxonomy exists), the Filters button had no `onClick` at all, and search only looked at the 48 already-loaded items.
+- `/api/explore-grid` now accepts:
+  - `q` - case-insensitive search over post `title`, `caption`, professional `title`, user `name`, user `username`.
+  - `sort` - `new` (createdAt) | `liked` (likes) | `viewed` (views). The CURSOR comparison mirrors the active sort; paging by createdAt while ordering by likes would skip rows.
+  - `media` - `all` | `image` (has a MediaAsset) | `video` (`mediaType VIDEO` or `videoUrl` set).
+  - Response also returns `likes` and `views`.
+- `ExploreGrid` forwards `q`/`sort`/`media` on every "load more" fetch, and refetches page 1 when the filter signature changes. The client-only `filtering` escape hatch was deleted: server-side filtering means paging works normally.
+- `app/(app)/explore/page.tsx`: category chips DELETED; search is debounced 300ms into `q`; the Filters button opens a panel with Sort by / Media type, Reset and Done, and a badge counting active filters.
+
+### Known gaps from this session
+- `media=video` posts have no MediaAsset, so their tile shows the initials fallback (no poster frame).
+- `sort=liked|viewed` reorders results but tiles do not display likes/views, so the ordering is invisible in the UI.

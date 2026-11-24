@@ -67,7 +67,7 @@ export function MobileTopBar() {
   return (
     <>
       <header
-        className={`fixed inset-x-0 top-0 z-30 flex items-center justify-between border-b border-line bg-white px-4 transition-transform duration-200 lg:hidden relative ${
+        className={`fixed inset-x-0 top-0 z-30 flex items-center justify-between border-b border-line bg-white px-4 transition-transform duration-200 lg:hidden ${
           hidden ? '-translate-y-full' : 'translate-y-0'
         }`}
         style={{ height: 'var(--topbar-h)' }}

@@ -29,7 +29,7 @@ export default async function ListPage() {
   })
 
   return (
-    <div className="w-full px-3 pb-6 pt-2 sm:px-4 lg:pt-6">
+    <div className="w-full px-3 pb-6 sm:px-4 lg:pt-6">
       <div className="mb-4">
         <h1 className="text-[20px] font-bold tracking-tight text-ink sm:text-[26px]">My list</h1>
         <p className="mt-1 text-[14px] text-ink-muted">

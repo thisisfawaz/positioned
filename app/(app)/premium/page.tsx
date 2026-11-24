@@ -20,7 +20,7 @@ export default async function PremiumPage() {
   ]
 
   return (
-    <div className="w-full px-3 pb-8 pt-2 sm:px-4 lg:pt-6">
+    <div className="w-full px-3 pb-8 sm:px-4 lg:pt-6">
       <div className="mx-auto max-w-[640px]">
         <h1 className="text-[22px] font-bold text-ink sm:text-[26px]">Positioned Premium</h1>
         <p className="mt-1 text-[14px] text-ink-muted">

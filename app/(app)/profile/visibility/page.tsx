@@ -27,7 +27,7 @@ export default async function VisibilityPage() {
   const selectedBoostIds = analytics?.activeBoost?.posts.map((p) => p.id) ?? []
 
   return (
-    <div className="w-full px-3 pb-6 pt-2 sm:px-4 lg:pt-6">
+    <div className="w-full px-3 pb-6 sm:px-4 lg:pt-6">
       <div className="mb-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">

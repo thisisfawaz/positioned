@@ -29,6 +29,48 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const take = Math.max(1, Math.min(Number(searchParams.get('take') ?? 48) || 48, 60))
   const cursor = searchParams.get('cursor')
+  const q = (searchParams.get('q') ?? '').trim()
+  const sortParam = searchParams.get('sort') ?? 'new'
+  const sort = sortParam === 'liked' || sortParam === 'viewed' ? sortParam : 'new'
+  const mediaParam = searchParams.get('media') ?? 'all'
+  const media = mediaParam === 'image' || mediaParam === 'video' ? mediaParam : 'all'
+
+  // ORDER BY per sort mode. A UNIQUE tiebreaker (id) is mandatory for cursor
+  // pagination - without it two rows sharing a value could be skipped or
+  // repeated across a page boundary.
+  const orderBy =
+    sort === 'liked'
+      ? [{ likes: 'desc' as const }, { id: 'desc' as const }]
+      : sort === 'viewed'
+        ? [{ views: 'desc' as const }, { id: 'desc' as const }]
+        : [{ createdAt: 'desc' as const }, { id: 'desc' as const }]
+
+  // Free-text search across the fields a user actually sees on a tile: the
+  // author's name/username, their professional title, and the post title /
+  // caption. Case-insensitive. Applied SERVER-SIDE so it searches every post,
+  // not just the batch already loaded in the grid.
+  const searchWhere = q
+    ? {
+        OR: [
+          { title: { contains: q, mode: 'insensitive' as const } },
+          { caption: { contains: q, mode: 'insensitive' as const } },
+          { professional: { title: { contains: q, mode: 'insensitive' as const } } },
+          { professional: { user: { name: { contains: q, mode: 'insensitive' as const } } } },
+          { professional: { user: { username: { contains: q, mode: 'insensitive' as const } } } },
+        ],
+      }
+    : {}
+
+  // Media-type filter. "image" = has at least one MediaAsset; "video" = a
+  // YouTube embed (mediaType VIDEO / videoUrl set). Explore's grid only renders
+  // images today, so "video" filters to those posts but they render as tiles
+  // via the existing image field when a poster exists.
+  const mediaWhere =
+    media === 'image'
+      ? { mediaAssets: { some: {} } }
+      : media === 'video'
+        ? { OR: [{ mediaType: 'VIDEO' as const }, { videoUrl: { not: null } }] }
+        : { mediaAssets: { some: {} } }
 
   // Fetch one extra row so we can tell whether another page exists without a
   // separate count query.
@@ -42,14 +84,32 @@ export async function GET(req: Request) {
     if (cursor) {
       const anchor = await prisma.workPost.findUnique({
         where: { id: cursor },
-        select: { createdAt: true, id: true },
+        select: { createdAt: true, likes: true, views: true, id: true },
       })
       if (anchor) {
-        cursorWhere = {
-          OR: [
-            { createdAt: { lt: anchor.createdAt } },
-            { createdAt: anchor.createdAt, id: { lt: anchor.id } },
-          ],
+        // The cursor comparison MUST mirror the active orderBy, otherwise
+        // sorting by likes but paging by createdAt skips rows.
+        if (sort === 'liked') {
+          cursorWhere = {
+            OR: [
+              { likes: { lt: anchor.likes } },
+              { likes: anchor.likes, id: { lt: anchor.id } },
+            ],
+          }
+        } else if (sort === 'viewed') {
+          cursorWhere = {
+            OR: [
+              { views: { lt: anchor.views } },
+              { views: anchor.views, id: { lt: anchor.id } },
+            ],
+          }
+        } else {
+          cursorWhere = {
+            OR: [
+              { createdAt: { lt: anchor.createdAt } },
+              { createdAt: anchor.createdAt, id: { lt: anchor.id } },
+            ],
+          }
         }
       }
     }
@@ -59,21 +119,24 @@ export async function GET(req: Request) {
         status: 'PUBLISHED',
         professionalId: { not: null },
         recruiterProfileId: null,
-        mediaAssets: { some: {} },
+        ...mediaWhere,
         professional: {
           user: {
             OR: [{ settings: { is: null } }, { settings: { is: { profileVisible: true } } }],
           },
         },
+        ...searchWhere,
         ...cursorWhere,
       },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      orderBy,
       take: fetchCount,
       select: {
         id: true,
         caption: true,
         title: true,
         createdAt: true,
+        likes: true,
+        views: true,
         professional: {
           select: {
             id: true,

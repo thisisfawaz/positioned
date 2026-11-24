@@ -1,70 +1,73 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
 import { ExploreGrid, type GridItem } from '@/components/explore/ExploreGrid'
 import { Skeleton } from '@/components/ui/Skeleton'
-import { SearchIcon, SlidersIcon } from '@/components/icons'
+import { Modal } from '@/components/ui/Modal'
+import { SearchIcon, SlidersIcon, CheckIcon } from '@/components/icons'
 
-const CATEGORIES = ['All', 'Design', 'Technology', 'Business', 'Education', 'Marketing', 'Engineering']
+/** Sort options. These map 1:1 to the API's `sort` param. */
+const SORTS = [
+  { id: 'new', label: 'Newest' },
+  { id: 'liked', label: 'Most liked' },
+  { id: 'viewed', label: 'Most viewed' },
+] as const
+
+/** Media-type options. These map 1:1 to the API's `media` param. */
+const MEDIA = [
+  { id: 'all', label: 'All media' },
+  { id: 'image', label: 'Images' },
+  { id: 'video', label: 'Video' },
+] as const
+
+const DEFAULT_SORT = 'new'
+const DEFAULT_MEDIA = 'all'
 
 /**
- * Explore, matching the reference: a photo grid of people's work with their
- * name and role overlaid on each tile.
+ * Explore: a grid of real published work, searchable across EVERY post (not
+ * just the loaded batch) with a real filters panel.
  *
- * Data comes from /api/explore-grid, NOT /api/professionals - the latter has no
- * media. A person with no published image renders as a neutral tile; there are
- * no stock or generated placeholder photos anywhere on this page.
+ * Search, sort and media type are all applied SERVER-SIDE by
+ * /api/explore-grid, so paging keeps working while filtering. The old
+ * category chips were removed: they matched a substring against the author's
+ * job title, so "Engineering" only found people whose title happened to
+ * contain that word - a fake facet over data that has no taxonomy.
  */
 export default function ExplorePage() {
   const [query, setQuery] = useState('')
-  const [category, setCategory] = useState('All')
-  // A stable seed per mount so the grid is RANDOMISED on load but does not
-  // re-shuffle on every render (search typing, SWR revalidation).
-  const [seed] = useState(() => Math.random())
+  // Debounce so typing does not fire a request per keystroke.
+  const [debouncedQuery, setDebouncedQuery] = useState('')
+  const [sort, setSort] = useState<string>(DEFAULT_SORT)
+  const [media, setMedia] = useState<string>(DEFAULT_MEDIA)
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
-  // SCROLL RESTORATION AND INFINITE LOADING LIVE IN ExploreGrid NOW. The old
-  // effect here restored immediately on mount, BEFORE the grid had re-expanded,
-  // which fought the new one and landed in the wrong place. Do not add a second
-  // copy.
-  //
-  // The page fetches the FIRST 48 posts only; ExploreGrid keeps paging through
-  // /api/explore-grid via the `nextCursor` it hands back, until every post has
-  // been shown. `take=48` here is the user's requested first batch.
-  const { data, isLoading } = useSWR<{ items: GridItem[]; nextCursor: string | null }>(
-    '/api/explore-grid?take=48'
-  )
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = setTimeout(() => setDebouncedQuery(query.trim()), 300)
+    return () => {
+      if (timer.current) clearTimeout(timer.current)
+    }
+  }, [query])
 
-  const { items, cursor } = useMemo(() => {
-    // REAL POSTS ONLY. The demo-people fallback was removed: Explore is now a
-    // grid of actual professional posts from /api/explore-grid, and showing
-    // invented people here made it read as a wall of random usernames.
-    let list = data?.items ?? []
-    const q = query.trim().toLowerCase()
-    if (q) {
-      list = list.filter((i) =>
-        [i.name, i.title, i.username].filter(Boolean).join(' ').toLowerCase().includes(q)
-      )
-    }
-    // Category filtering is client-side on the role text. There is no taxonomy
-    // column on the profile yet, so this is a text match, not a real facet.
-    if (category !== 'All') {
-      list = list.filter((i) => (i.title ?? '').toLowerCase().includes(category.toLowerCase()))
-    }
-    // RANDOMISE the order for this mount. Seeded so it is stable across
-    // re-renders while still differing from the server's newest-first order.
-    const rank = (id: string) => {
-      let h = 0
-      for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 100000
-      return (h / 100000 + seed) % 1
-    }
-    list = [...list].sort((a, b) => rank(a.id) - rank(b.id))
-    return { items: list, cursor: data?.nextCursor ?? null }
-  }, [data, query, category, seed])
+  const params = new URLSearchParams({ take: '48' })
+  if (debouncedQuery) params.set('q', debouncedQuery)
+  if (sort !== DEFAULT_SORT) params.set('sort', sort)
+  if (media !== DEFAULT_MEDIA) params.set('media', media)
+  const swrKey = `/api/explore-grid?${params.toString()}`
+
+  const { data, isLoading } = useSWR<{ items: GridItem[]; nextCursor: string | null }>(swrKey)
+
+  const items = data?.items ?? []
+  const cursor = data?.nextCursor ?? null
+
+  const activeCount =
+    (sort !== DEFAULT_SORT ? 1 : 0) + (media !== DEFAULT_MEDIA ? 1 : 0)
 
   return (
     <div className="w-full pb-6">
-      <div className="px-3 pt-2 sm:px-4 lg:pt-6">
+      <div className="px-3 sm:px-4 lg:pt-6">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h1 className="text-[20px] font-bold tracking-tight text-ink sm:text-[26px]">Explore</h1>
@@ -74,14 +77,20 @@ export default function ExplorePage() {
           </div>
           <button
             type="button"
+            onClick={() => setFiltersOpen(true)}
             className="flex flex-shrink-0 items-center gap-1.5 rounded-xl px-2 py-2 text-[13px] font-medium text-ink-muted hover:text-ink"
           >
             <SlidersIcon className="h-[17px] w-[17px]" />
             Filters
+            {activeCount > 0 && (
+              <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-white">
+                {activeCount}
+              </span>
+            )}
           </button>
         </div>
 
-        {/* Search */}
+        {/* Search - server-side, debounced. */}
         <div className="relative mt-4">
           <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-subtle" />
           <input
@@ -91,27 +100,6 @@ export default function ExplorePage() {
             placeholder="Search people, skills, professions or work..."
             className="w-full rounded-xl border border-transparent bg-surface-sunken py-3 pl-10 pr-4 text-[14px] text-ink placeholder:text-ink-subtle focus:border-brand/30 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand/10"
           />
-        </div>
-
-        {/* Category chips */}
-        <div className="scroll-hidden -mx-3 mt-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:-mx-4 sm:px-4">
-          {CATEGORIES.map((c) => {
-            const active = c === category
-            return (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setCategory(c)}
-                className={`flex-shrink-0 rounded-full px-4 py-1.5 text-[13px] font-medium transition-colors ${
-                  active
-                    ? 'bg-brand text-white'
-                    : 'bg-surface-sunken text-ink-muted hover:text-ink'
-                }`}
-              >
-                {c}
-              </button>
-            )
-          })}
         </div>
       </div>
 
@@ -132,17 +120,102 @@ export default function ExplorePage() {
           </div>
         ) : items.length === 0 ? (
           <div className="py-16 text-center">
-            <p className="text-[14px] text-ink-subtle">Nothing to show yet.</p>
+            <p className="text-[14px] text-ink-subtle">
+              {debouncedQuery || activeCount > 0 ? 'No results match your filters.' : 'Nothing to show yet.'}
+            </p>
           </div>
         ) : (
           <ExploreGrid
             initialItems={items}
             initialCursor={cursor}
-            query={query}
-            category={category}
+            query={debouncedQuery}
+            sort={sort}
+            media={media}
           />
         )}
       </div>
+
+      <Modal
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        title="Filters"
+        ariaLabel="Explore filters"
+        maxWidth="max-w-[480px]"
+      >
+        <div className="space-y-6">
+          <section>
+            <h3 className="text-[13px] font-semibold text-ink">Sort by</h3>
+            <div className="mt-2 space-y-1.5">
+              {SORTS.map((s) => (
+                <FilterRow
+                  key={s.id}
+                  label={s.label}
+                  active={sort === s.id}
+                  onClick={() => setSort(s.id)}
+                />
+              ))}
+            </div>
+          </section>
+
+          <section>
+            <h3 className="text-[13px] font-semibold text-ink">Media type</h3>
+            <div className="mt-2 space-y-1.5">
+              {MEDIA.map((m) => (
+                <FilterRow
+                  key={m.id}
+                  label={m.label}
+                  active={media === m.id}
+                  onClick={() => setMedia(m.id)}
+                />
+              ))}
+            </div>
+          </section>
+
+          <div className="flex items-center justify-between border-t border-line pt-4">
+            <button
+              type="button"
+              onClick={() => {
+                setSort(DEFAULT_SORT)
+                setMedia(DEFAULT_MEDIA)
+              }}
+              className="text-[13px] font-medium text-ink-muted hover:text-ink"
+            >
+              Reset
+            </button>
+            <button
+              type="button"
+              onClick={() => setFiltersOpen(false)}
+              className="rounded-xl bg-[var(--brand-black)] px-4 py-2 text-[13px] font-semibold text-[var(--surface)]"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
+  )
+}
+
+/** One selectable row in the filters panel. */
+function FilterRow({
+  label,
+  active,
+  onClick,
+}: {
+  label: string
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-[14px] transition-colors ${
+        active ? 'bg-brand-light text-ink' : 'text-ink-muted hover:bg-surface-sunken hover:text-ink'
+      }`}
+    >
+      {label}
+      {active && <CheckIcon className="h-4 w-4" />}
+    </button>
   )
 }

@@ -30,12 +30,14 @@ export function ExploreGrid({
   initialItems,
   initialCursor,
   query,
-  category,
+  sort,
+  media,
 }: {
   initialItems: GridItem[]
   initialCursor: string | null
   query: string
-  category: string
+  sort: string
+  media: string
 }) {
   const STORE_KEY = 'explore:grid'
   const RETURN_KEY = `${STORE_KEY}:returning`
@@ -52,11 +54,9 @@ export function ExploreGrid({
     }
   })
 
-  // If the user is searching or filtering, the extra pages fetched earlier may
-  // not be relevant any more. In that case we still filter locally (the page
-  // does the same), but we stop auto-fetching more since the filter is only
-  // applied client-side and a full crawl would be wasteful.
-  const filtering = query.trim().length > 0 || category !== 'All'
+  // Filters are SERVER-SIDE now (see /api/explore-grid): search, sort and media
+  // type are part of the request, so paging through results works normally and
+  // this grid never needs to crawl the whole set to filter locally.
 
   const [items, setItems] = useState<GridItem[]>(initialItems)
   const [cursor, setCursor] = useState<string | null>(initialCursor)
@@ -80,7 +80,7 @@ export function ExploreGrid({
   // stale tiles from another filter keep showing. Uses the filter signature as
   // the trigger so an SWR revalidation that returns the same filter does not
   // collapse a grid the user has already scrolled through.
-  const filterKey = `${query}\u0000${category}`
+  const filterKey = `${query}\u0000${sort}\u0000${media}`
   const lastFilter = useRef(filterKey)
   useEffect(() => {
     if (lastFilter.current === filterKey) return
@@ -148,9 +148,11 @@ export function ExploreGrid({
     loadingRef.current = true
     setLoadingMore(true)
     try {
-      const res = await fetch(
-        `/api/explore-grid?take=48&cursor=${encodeURIComponent(cursor)}`
-      )
+      const params = new URLSearchParams({ take: '48', cursor })
+      if (query.trim()) params.set('q', query.trim())
+      if (sort) params.set('sort', sort)
+      if (media) params.set('media', media)
+      const res = await fetch(`/api/explore-grid?${params.toString()}`)
       if (!res.ok) throw new Error('Fetch failed')
       const data: { items: GridItem[]; nextCursor: string | null } = await res.json()
       // De-dupe defensively against a boundary post slipping through.
@@ -165,7 +167,7 @@ export function ExploreGrid({
       loadingRef.current = false
       setLoadingMore(false)
     }
-  }, [cursor])
+  }, [cursor, query, sort, media])
 
   useEffect(() => {
     const el = sentinel.current
@@ -177,7 +179,7 @@ export function ExploreGrid({
         // pull the next page from the server (unless the user is filtering).
         if (visible < items.length) {
           setVisible((v) => Math.min(v + REVEAL, items.length))
-        } else if (!filtering) {
+        } else {
           void loadMore()
         }
       },
@@ -185,12 +187,11 @@ export function ExploreGrid({
     )
     io.observe(el)
     return () => io.disconnect()
-  }, [items.length, visible, filtering, loadMore])
+  }, [items.length, visible, loadMore])
 
   // After a page arrives and the user is still near the bottom, keep revealing:
   // the sentinel will not re-intersect on its own because it never left view.
   useEffect(() => {
-    if (filtering) return
     if (visible < items.length && hasScrolled.current) {
       const el = sentinel.current
       if (!el) return
@@ -199,7 +200,7 @@ export function ExploreGrid({
         setVisible((v) => Math.min(v + REVEAL, items.length))
       }
     }
-  }, [items.length, visible, filtering])
+  }, [items.length, visible])
 
   function markReturning() {
     try {
@@ -210,7 +211,7 @@ export function ExploreGrid({
   }
 
   const shown = items.slice(0, visible)
-  const hasMoreToLoad = !filtering && cursor !== null
+  const hasMoreToLoad = cursor !== null
   const showSentinel = visible < items.length || hasMoreToLoad
 
   return (
@@ -223,7 +224,7 @@ export function ExploreGrid({
           )}
         </div>
       )}
-      {!hasMoreToLoad && !filtering && items.length > 0 && visible >= items.length && (
+      {!hasMoreToLoad && items.length > 0 && visible >= items.length && (
         <p className="py-6 text-center text-[13px] text-ink-subtle">You&apos;re all caught up.</p>
       )}
     </>
