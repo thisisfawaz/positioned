@@ -13,6 +13,8 @@ import {
   RECRUITER_RESPONSES,
 } from '@/lib/posts/response-types'
 import { toStoredAsset } from '@/lib/storage/media-url'
+import { deleteStoredAsset } from '@/lib/storage/cloudinary'
+import { youtubeEmbedUrl } from '@/lib/client/youtube'
 
 function allowedResponses(role: string): readonly string[] {
   return role === 'RECRUITER' ? RECRUITER_RESPONSES : PROFESSIONAL_RESPONSES
@@ -41,19 +43,8 @@ function ownerFields(user: {
   return null
 }
 
-/** Normalises whatever the user pasted into a YouTube video id / embed URL. */
-function parseYouTube(raw: string): string | null {
-  const v = raw.trim()
-  if (!v) return null
-  // Already an embed URL - keep it.
-  if (/^https?:\/\/www\.youtube\.com\/embed\//i.test(v)) return v
-  // youtube.com/watch?v=ID or youtu.be/ID
-  const m = v.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/i)
-  if (m) return `https://www.youtube.com/embed/${m[1]}`
-  // Bare 11-char id
-  if (/^[\w-]{11}$/.test(v)) return `https://www.youtube.com/embed/${v}`
-  return null
-}
+/** Normalises whatever the user pasted into a bare YouTube embed URL. */
+const parseYouTube = youtubeEmbedUrl
 
 export type WorkFormState = {
   ok?: boolean
@@ -127,10 +118,69 @@ function extractFormData(formData: FormData, role: string) {
     linksRaw: String(formData.get('links') || ''),
     caption: String(formData.get('caption') || '').trim(),
     mediaUrl: String(formData.get('mediaUrl') || '').trim(),
+    // An UPLOADED video (Cloudinary secure_url). Mutually exclusive with an
+    // image and with a YouTube link.
+    uploadedVideoUrl: String(formData.get('uploadedVideoUrl') || '').trim(),
     // Which frame the post is shown in. Validated on write rather than trusted:
     // the value rides in a hidden input and could be tampered with.
     aspect: formData.get('aspect') === '16:9' ? '16:9' : '9:16',
   }
+}
+
+/**
+ * Decides which single media kind a submission carries and the (mediaType,
+ * videoUrl) pair to persist. Shared by create and update so the exclusivity
+ * rules cannot drift between them.
+ *
+ * Exactly one of: an image (mediaUrl), a YouTube embed (videoUrl), or an
+ * uploaded video (uploadedVideoUrl). Returns an error string when the input is
+ * contradictory or malformed.
+ */
+function resolveMedia(d: {
+  mediaUrl: string
+  videoUrl: string | null
+  uploadedVideoUrl: string
+  aspect: string
+}):
+  | {
+      mediaType: PostMediaType | null
+      videoUrl: string | null
+      hasImage: boolean
+      imageUrl: string
+    }
+  | { error: string } {
+  const hasImage = Boolean(d.mediaUrl)
+  const hasYouTube = Boolean(d.videoUrl)
+  const hasUploadedVideo = Boolean(d.uploadedVideoUrl)
+
+  const kinds = [hasImage, hasYouTube, hasUploadedVideo].filter(Boolean).length
+  if (kinds > 1) {
+    return { error: 'Add an image, a YouTube link, or a video - not more than one.' }
+  }
+
+  if (hasUploadedVideo) {
+    // Only accept a value the upload route could have produced: an absolute
+    // https URL. A hidden input can be tampered with.
+    if (!/^https:\/\//i.test(d.uploadedVideoUrl)) {
+      return { error: 'The uploaded video link is invalid.' }
+    }
+    return {
+      mediaType: 'VIDEO',
+      videoUrl: d.uploadedVideoUrl,
+      hasImage: false,
+      imageUrl: '',
+    }
+  }
+
+  if (hasYouTube) {
+    return { mediaType: 'YOUTUBE', videoUrl: d.videoUrl, hasImage: false, imageUrl: '' }
+  }
+
+  if (hasImage) {
+    return { mediaType: 'IMAGE', videoUrl: null, hasImage: true, imageUrl: d.mediaUrl }
+  }
+
+  return { mediaType: null, videoUrl: null, hasImage: false, imageUrl: '' }
 }
 
 /**
@@ -183,8 +233,7 @@ export async function createWorkPost(
   // short - the caption itself is rendered in full on the card.
   const derivedTitle = (d.caption || 'Untitled post').slice(0, 80)
 
-  // Media is an image OR a YouTube link, never both, and it is COMPULSORY.
-  const hasImage = Boolean(d.mediaUrl)
+  // Media is an image, a YouTube link, OR an uploaded video - exactly one.
   const rawVideo = String(formData.get('videoUrl') || '').trim()
   if (rawVideo && !d.videoUrl) {
     return {
@@ -192,30 +241,23 @@ export async function createWorkPost(
       values: rawValues(formData),
     }
   }
-  if (hasImage && d.videoUrl) {
-    return {
-      error: 'Add an image or a YouTube link, not both.',
-      values: rawValues(formData),
-    }
+  const resolved = resolveMedia(d)
+  if ('error' in resolved) {
+    return { error: resolved.error, values: rawValues(formData) }
   }
+  const { mediaType, videoUrl, hasImage } = resolved
+
   // MEDIA IS COMPULSORY FOR PROFESSIONAL POSTS, OPTIONAL FOR RECRUITING.
   // A recruiter post can be a caption on a background - see the card, which
   // renders a colour block when there is nothing to show. A professional post
   // is work, and work needs something to look at.
   const isRecruiterPost = user.role === 'RECRUITER'
-  if (!hasImage && !d.videoUrl && !isRecruiterPost) {
+  if (!mediaType && !isRecruiterPost) {
     return {
-      error: 'Add an image or a YouTube link to publish.',
+      error: 'Add an image, a video, or a YouTube link to publish.',
       values: rawValues(formData),
     }
   }
-  // NULL when there is no media at all - it used to default to YOUTUBE, which
-  // labelled a media-less post as a video.
-  const mediaType: PostMediaType | null = hasImage
-    ? 'IMAGE'
-    : d.videoUrl
-      ? 'YOUTUBE'
-      : null
 
   // APPLY sends applicants somewhere, so it needs a destination. Unlike the
   // other response types this is a real requirement, not a nicety.
@@ -248,7 +290,7 @@ export async function createWorkPost(
         ...owner,
         desiredResponse: d.desiredResponse,
         mediaType,
-        videoUrl: d.videoUrl,
+        videoUrl,
         applyUrl: d.desiredResponse === 'APPLY' ? d.applyUrl || null : null,
         title: derivedTitle,
         purpose: d.purpose || null,
@@ -265,7 +307,7 @@ export async function createWorkPost(
         skills,
         links,
         status: 'PUBLISHED',
-        mediaAssets: { create: mediaRows(hasImage ? d.mediaUrl : '', d.aspect) },
+        mediaAssets: { create: mediaRows(hasImage ? resolved.imageUrl : '', d.aspect) },
       },
     })
     createdId = created.id
@@ -337,23 +379,20 @@ export async function updateWorkPost(
   const d = extractFormData(formData, user.role)
   const derivedTitle = (d.caption || existing.title || 'Untitled post').slice(0, 80)
 
-  const hasImage = Boolean(d.mediaUrl)
   const rawVideo = String(formData.get('videoUrl') || '').trim()
   if (rawVideo && !d.videoUrl) {
     return { error: 'That does not look like a YouTube link.', values: rawValues(formData) }
   }
-  if (hasImage && d.videoUrl) {
-    return { error: 'Add an image or a YouTube link, not both.', values: rawValues(formData) }
+  const resolved = resolveMedia(d)
+  if ('error' in resolved) {
+    return { error: resolved.error, values: rawValues(formData) }
   }
+  const { mediaType, videoUrl, hasImage } = resolved
+
   const isRecruiterPost = user.role === 'RECRUITER'
-  if (!hasImage && !d.videoUrl && !isRecruiterPost) {
-    return { error: 'Add an image or a YouTube link to publish.', values: rawValues(formData) }
+  if (!mediaType && !isRecruiterPost) {
+    return { error: 'Add an image, a video, or a YouTube link to publish.', values: rawValues(formData) }
   }
-  const mediaType: PostMediaType | null = hasImage
-    ? 'IMAGE'
-    : d.videoUrl
-      ? 'YOUTUBE'
-      : null
 
   if (d.desiredResponse === 'APPLY') {
     if (!d.applyUrl) {
@@ -382,7 +421,7 @@ export async function updateWorkPost(
       data: {
         desiredResponse: d.desiredResponse,
         mediaType,
-        videoUrl: d.videoUrl,
+        videoUrl,
         applyUrl: d.desiredResponse === 'APPLY' ? d.applyUrl || null : null,
         title: derivedTitle,
         purpose: d.purpose || null,
@@ -407,7 +446,7 @@ export async function updateWorkPost(
     // that removing the image actually removes the row.
     await prisma.mediaAsset.deleteMany({ where: { workPostId: postId } })
     if (hasImage) {
-      const asset = toStoredAsset(d.mediaUrl)
+      const asset = toStoredAsset(resolved.imageUrl)
       if (asset) {
         await prisma.mediaAsset.create({
           data: {
@@ -461,6 +500,14 @@ export async function deleteWorkPost(
     return { error: 'You can only delete your own posts.' }
   }
 
+  // Snapshot the media BEFORE the rows are removed, so the Cloudinary copies
+  // can be cleaned up afterwards. Only CLOUDINARY assets resolve to a URL here;
+  // LOCAL filenames are skipped by deleteStoredAsset.
+  const assets = await prisma.mediaAsset.findMany({
+    where: { workPostId: postId },
+    select: { providerAssetId: true },
+  })
+
   try {
     // Delete related rows first (no cascade configured)
     await prisma.$transaction([
@@ -473,6 +520,10 @@ export async function deleteWorkPost(
     console.error('Failed to delete work post:', err)
     return { error: 'Failed to delete. Please try again.' }
   }
+
+  // Best-effort storage cleanup AFTER the DB commit. deleteStoredAsset never
+  // throws, so a Cloudinary hiccup cannot fail the user's delete.
+  await Promise.all(assets.map((a) => deleteStoredAsset(a.providerAssetId)))
 
   revalidatePath('/profile/work')
   revalidatePath('/profile/feed')

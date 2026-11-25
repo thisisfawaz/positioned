@@ -21,6 +21,7 @@ import {
   parseAspect,
   type AspectRatio,
 } from '@/lib/posts/aspect'
+import { youtubeEmbedUrl as youtubeEmbed } from '@/lib/client/youtube'
 
 function Field({
   label,
@@ -61,17 +62,6 @@ type Initial = {
   desiredResponse?: ResponseType | null
   applyUrl?: string | null
   aspect?: AspectRatio | null
-}
-
-/** Pulls the 11-char video id out of any common YouTube URL shape. */
-function youtubeEmbed(raw: string): string | null {
-  const v = raw.trim()
-  if (!v) return null
-  if (/^https?:\/\/www\.youtube\.com\/embed\//i.test(v)) return v
-  const m = v.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/i)
-  if (m) return `https://www.youtube.com/embed/${m[1]}`
-  if (/^[\w-]{11}$/.test(v)) return `https://www.youtube.com/embed/${v}`
-  return null
 }
 
 export function WorkForm({

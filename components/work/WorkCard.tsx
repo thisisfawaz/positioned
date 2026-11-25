@@ -54,7 +54,7 @@ type Post = {
   likedByMe?: boolean
   savedByMe?: boolean
   desiredResponse?: ResponseType | null
-  mediaType?: 'IMAGE' | 'YOUTUBE' | null
+  mediaType?: 'IMAGE' | 'YOUTUBE' | 'VIDEO' | null
   videoUrl?: string | null
   applyUrl?: string | null
   professional?: {
@@ -300,7 +300,23 @@ export function WorkCard({
   // The media visual, shared by both layout states. `contained` keeps the image
   // object-contain over a blurred copy of itself so nothing is ever cropped.
   const mediaVisual = post.mediaType === 'YOUTUBE' && post.videoUrl ? (
-    <VideoPlayer ref={playerRef} videoUrl={post.videoUrl} />
+    <VideoPlayer
+      ref={playerRef}
+      videoUrl={post.videoUrl}
+      controlsHidden={!isDesktop && Boolean(chromeHidden)}
+    />
+  ) : post.mediaType === 'VIDEO' && post.videoUrl ? (
+    // An UPLOADED video (Cloudinary). Native element: muted autoplay + loop so
+    // the reel behaves like the YouTube player; controls for scrubbing.
+    <video
+      src={post.videoUrl}
+      className="absolute inset-0 h-full w-full object-cover"
+      autoPlay
+      muted
+      loop
+      playsInline
+      controls
+    />
   ) : imageUrl ? (
     <>
       {/* Blurred fill behind. Always rendered: it is what shows in the gaps

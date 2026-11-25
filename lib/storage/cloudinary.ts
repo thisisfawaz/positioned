@@ -111,3 +111,53 @@ export async function deleteFromCloudinary(
   configure()
   await cloudinary.uploader.destroy(publicId, { resource_type: resourceType })
 }
+
+/**
+ * Extract the Cloudinary public_id and resource type from a secure_url.
+ *
+ * Delivery URLs look like:
+ *   https://res.cloudinary.com/<cloud>/image/upload/v<ver>/positioned/uploads/<id>.<ext>
+ *   https://res.cloudinary.com/<cloud>/video/upload/v<ver>/positioned/uploads/<id>.<ext>
+ * The public_id is everything after /upload/v<ver>/ WITHOUT the extension.
+ *
+ * Returns null for anything that is not a Cloudinary delivery URL, so LOCAL
+ * filenames and external links are simply skipped.
+ */
+export function parseCloudinaryUrl(
+  url: string
+): { publicId: string; resourceType: CloudinaryResourceType } | null {
+  const m = url.match(
+    /res\.cloudinary\.com\/[^/]+\/(image|video)\/upload\/(?:v\d+\/)?(.+?)(?:\.[a-z0-9]+)?(?:\?.*)?$/i
+  )
+  if (!m) return null
+  const resourceType = m[1].toLowerCase() as CloudinaryResourceType
+  const publicId = m[2]
+  if (!publicId) return null
+  return { publicId, resourceType }
+}
+
+/**
+ * Best-effort delete of whatever a stored `providerAssetId` points at.
+ *
+ * NEVER THROWS: deletion is cleanup, and a failure here (asset already gone,
+ * transient Cloudinary error, or a non-Cloudinary value) must not roll back or
+ * block the database delete that the caller is doing. LOCAL filenames and
+ * external URLs are ignored (this helper does not touch the filesystem).
+ */
+export async function deleteStoredAsset(
+  providerAssetId: string | null | undefined,
+  resourceTypeHint?: CloudinaryResourceType
+): Promise<void> {
+  if (!providerAssetId) return
+  if (!isCloudinaryConfigured()) return
+  const parsed = parseCloudinaryUrl(providerAssetId)
+  if (!parsed) return
+  try {
+    await deleteFromCloudinary(
+      parsed.publicId,
+      resourceTypeHint ?? parsed.resourceType
+    )
+  } catch (err) {
+    console.error('[cloudinary] delete failed (ignored):', err)
+  }
+}

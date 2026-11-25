@@ -8,6 +8,11 @@ import {
   useState,
 } from 'react'
 import { youtubeVideoId } from '@/lib/client/youtube'
+import { useCached } from '@/lib/client/use-cached'
+
+type SettingsPayload = {
+  settings?: { autoplayVideo?: boolean }
+}
 
 /**
  * In-feed YouTube player with NO YouTube chrome.
@@ -105,8 +110,8 @@ export type VideoPlayerHandle = {
 
 export const VideoPlayer = forwardRef<
   VideoPlayerHandle,
-  { videoUrl: string | null | undefined }
->(function VideoPlayer({ videoUrl }, ref) {
+  { videoUrl: string | null | undefined; controlsHidden?: boolean }
+>(function VideoPlayer({ videoUrl, controlsHidden = false }, ref) {
   const videoId = youtubeVideoId(videoUrl)
   // YouTube REPLACES the mount div with an iframe, so the mount node becomes
   // detached. Observe this STABLE wrapper instead - it is never replaced.
@@ -116,6 +121,13 @@ export const VideoPlayer = forwardRef<
   const [ready, setReady] = useState(false)
   const [playing, setPlaying] = useState(false)
   const [muted, setMuted] = useState(true)
+
+  // Autoplay-on-finish preference. SWR-backed module cache, so every player
+  // shares ONE request and a toggle in Settings is seen immediately.
+  const { data: settingsData } = useCached<SettingsPayload>('/api/settings')
+  const autoplayOnEnd = settingsData?.settings?.autoplayVideo ?? true
+  const autoplayOnEndRef = useRef(autoplayOnEnd)
+  autoplayOnEndRef.current = autoplayOnEnd
 
   // Subscribers for the timeline(s).
   const listenersRef = useRef(
@@ -162,7 +174,23 @@ export const VideoPlayer = forwardRef<
               if (e.data === YTs.PLAYING) {
                 setPlaying(true)
                 emit(playerRef.current.getCurrentTime(), playerRef.current.getDuration())
-              } else if (e.data === YTs.PAUSED || e.data === YTs.ENDED) {
+              } else if (e.data === YTs.ENDED) {
+                // Finished without scrolling. Replay from the start when the
+                // user has autoplay on; otherwise stay stopped at the end.
+                setPlaying(false)
+                if (autoplayOnEndRef.current) {
+                  try {
+                    playerRef.current.seekTo(0, true)
+                    playerRef.current.playVideo()
+                    // Reset the timeline too: it only advances from our emits
+                    // while `playing`, and on replay the bar would otherwise
+                    // stay parked at the end of the previous run.
+                    emit(0, playerRef.current.getDuration())
+                  } catch {
+                    // player may be gone
+                  }
+                }
+              } else if (e.data === YTs.PAUSED) {
                 setPlaying(false)
               }
             },
@@ -269,8 +297,11 @@ export const VideoPlayer = forwardRef<
 
   return (
     <div className="absolute inset-0">
-      {/* The iframe mounts here, behind our tap layer. */}
-      <div ref={wrapperRef} className="absolute inset-0">
+      {/* The iframe mounts here, behind our tap layer. pointer-events-none so
+          the iframe can never receive a tap (YouTube's own controls stay inert)
+          WITHOUT cancelling the touch event - a preventDefault on touchstart
+          killed the reel's own tap-to-toggle. */}
+      <div ref={wrapperRef} className="pointer-events-none absolute inset-0">
         {/* Thumbnail poster: shown until the video actually starts, so the
             frame is never blank (e.g. muted autoplay blocked on iOS, or before
             the player initialises). YouTube serves this from its image CDN. */}
@@ -286,23 +317,57 @@ export const VideoPlayer = forwardRef<
         <div ref={containerRef} className="h-full w-full" />
       </div>
 
-      {/* Tap layer: toggles play/pause. */}
-      <button
-        type="button"
-        aria-label={playing ? 'Pause' : 'Play'}
-        onClick={togglePlay}
-        onPointerDown={(e) => e.stopPropagation()}
-        onPointerUp={(e) => e.stopPropagation()}
-        className="absolute inset-0 flex items-center justify-center"
-      >
-        {!playing && ready && (
-          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </span>
-        )}
-      </button>
+      {/* Tap layer: a PLAIN layer, not a button. Taps on the video body fall
+          through to the reel's own tap handler so they show/hide the navbars
+          exactly like a photo does. Nothing here pauses or plays.
+
+          It also BLOCKS taps from reaching the YouTube iframe underneath, so
+          YouTube's own play/pause overlay and title bar can never be operated
+          or appear in the way. The iframe stays visually behind this layer. */}
+      <div className="absolute inset-0" />
+
+      {/* COVER for YouTube's own center play glyph. The iframe draws its own
+          button that playerVars cannot remove; this solid disc sits over that
+          exact spot so it is never seen. It follows the SAME visibility as our
+          play button (both hide with the chrome), so it never shows as a bare
+          black circle on a playing video. Our button renders on top of it. */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <div
+          aria-hidden="true"
+          className={`h-16 w-16 rounded-full bg-black transition-opacity ${
+            controlsHidden ? 'opacity-0' : 'opacity-100'
+          }`}
+        />
+      </div>
+
+      {/* The ONLY play/pause control: the play button. It sits above the tap
+          layer and stops its own taps, so tapping it never toggles the chrome. */}
+      {ready && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <button
+            type="button"
+            aria-label={playing ? 'Pause' : 'Play'}
+            onClick={togglePlay}
+            onPointerDown={(e) => e.stopPropagation()}
+            onPointerUp={(e) => e.stopPropagation()}
+            className={`flex h-16 w-16 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur transition-opacity ${
+              controlsHidden
+                ? 'pointer-events-none opacity-0'
+                : 'pointer-events-auto opacity-100'
+            }`}
+          >
+            {playing ? (
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
+              </svg>
+            ) : (
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            )}
+          </button>
+        </div>
+      )}
 
       {/* Mute toggle, top-right (out of the caption's way). */}
       <div className="absolute right-3 top-16 z-30">

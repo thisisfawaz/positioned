@@ -4,10 +4,13 @@ import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { ExperienceSection } from '@/components/profile/ExperienceSection'
 import { AboutSection } from '@/components/profile/AboutSection'
+import { youtubeVideoId } from '@/lib/client/youtube'
 
 type Post = {
   id: string
   title: string
+  mediaType?: 'IMAGE' | 'YOUTUBE' | 'VIDEO' | null
+  videoUrl?: string | null
   mediaAssets?: { providerAssetId: string }[] | null
 }
 
@@ -241,11 +244,18 @@ export function ProfilePosts({
           <ul className="grid grid-cols-3 gap-[2px] p-0 sm:gap-1 sm:p-1">
             {shown.map((post) => {
               const asset = post.mediaAssets?.[0]?.providerAssetId
-              const src = asset
+              const imageSrc = asset
                 ? asset.startsWith('http://') || asset.startsWith('https://')
                   ? asset
                   : `/uploads/${asset}`
                 : null
+              // A YouTube post has no media asset - its video lives on
+              // videoUrl. Use YouTube's own poster frame so the tile shows a
+              // real thumbnail instead of falling back to a title-only block.
+              const ytId =
+                post.mediaType === 'YOUTUBE' ? youtubeVideoId(post.videoUrl) : null
+              const src = imageSrc ?? (ytId ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg` : null)
+              const isVideo = Boolean(ytId) || post.mediaType === 'VIDEO'
               return (
                 <li key={post.id}>
                   {/* Opens this profile's OWN reel - /[username]/reels -
@@ -266,6 +276,13 @@ export function ProfilePosts({
                       <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand-light to-surface-sunken p-2 text-center text-[11px] font-semibold leading-tight text-ink">
                         {post.title}
                       </div>
+                    )}
+                    {isVideo && src && (
+                      <span className="pointer-events-none absolute bottom-1.5 left-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </span>
                     )}
                   </Link>
                 </li>

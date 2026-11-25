@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { prisma } from '@/lib/db'
+import { deleteStoredAsset } from '@/lib/storage/cloudinary'
 
 export type RecruitmentFormState = {
   ok?: boolean
@@ -268,6 +269,11 @@ export async function deleteRecruitment(formData: FormData): Promise<void> {
   if (!existing || existing.recruiterId !== user.id) return
 
   await prisma.recruitment.delete({ where: { id } })
+
+  // Best-effort Cloudinary cleanup for the role's image (videoUrl is a YouTube
+  // embed, which parseCloudinaryUrl ignores). Runs after the row is gone so a
+  // storage hiccup cannot fail the delete.
+  await deleteStoredAsset(existing.imageUrl)
 
   revalidatePath('/recruitments')
   revalidatePath('/profile/recruitments')

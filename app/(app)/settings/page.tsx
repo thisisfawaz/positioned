@@ -13,6 +13,7 @@ type Settings = {
   notifyRoles: boolean
   profileVisible: boolean
   allowRecruiterMessages: boolean
+  autoplayVideo: boolean
   themeMode: ThemeMode
 }
 
@@ -183,6 +184,24 @@ export default function SettingsPage() {
                 />
               </li>
             ))}
+          </ul>
+        </Section>
+
+        <Section title="Playback">
+          <ul className="space-y-3">
+            <li className="flex items-center justify-between gap-4">
+              <div>
+                <span className="text-[14px] text-ink">Autoplay video</span>
+                <p className="text-[13px] text-ink-subtle">
+                  Restart a video automatically when it reaches the end.
+                </p>
+              </div>
+              <Toggle
+                checked={Boolean(settings?.autoplayVideo ?? true)}
+                onChange={(v) => update('autoplayVideo', v)}
+                disabled={!settings || saving === 'autoplayVideo'}
+              />
+            </li>
           </ul>
         </Section>
 

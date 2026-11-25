@@ -57,6 +57,8 @@ model UserSettings {
   notifyRoles            Boolean  @default(true)
   profileVisible         Boolean  @default(true)
   allowRecruiterMessages Boolean  @default(true)
+  /// Restart a video when it reaches the end (loop), without scrolling away.
+  autoplayVideo          Boolean  @default(true)
   themeMode              String   @default("light")
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
@@ -315,7 +317,10 @@ enum ResponseType {
 
 enum PostMediaType {
   IMAGE
+  /// A YouTube embed link stored in videoUrl.
   YOUTUBE
+  /// A video UPLOADED to Cloudinary; the delivery URL is in videoUrl.
+  VIDEO
 }
 
 enum WorkStatus {

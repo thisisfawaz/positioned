@@ -7,6 +7,7 @@ import {
   updateRecruitment,
   type RecruitmentFormState,
 } from '@/app/(app)/profile/recruitments/actions'
+import { youtubeEmbedUrl as youtubeEmbed } from '@/lib/client/youtube'
 
 type Initial = {
   id?: string
@@ -68,16 +69,6 @@ export function RecruitmentForm({
   useEffect(() => {
     if (state?.ok) onDirtyChange?.(false)
   }, [state, onDirtyChange])
-
-  function youtubeEmbed(raw: string): string | null {
-    const val = raw.trim()
-    if (!val) return null
-    if (/^https?:\/\/www\.youtube\.com\/embed\//i.test(val)) return val
-    const m = val.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/i)
-    if (m) return `https://www.youtube.com/embed/${m[1]}`
-    if (/^[\w-]{11}$/.test(val)) return `https://www.youtube.com/embed/${val}`
-    return null
-  }
 
   const embed = videoUrl ? youtubeEmbed(videoUrl) : null
   const videoInvalid = videoUrl.trim().length > 0 && !embed

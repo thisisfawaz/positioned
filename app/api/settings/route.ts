@@ -10,6 +10,7 @@ const BOOLEAN_KEYS = [
   'notifyRoles',
   'profileVisible',
   'allowRecruiterMessages',
+  'autoplayVideo',
 ] as const
 
 type BooleanKey = (typeof BOOLEAN_KEYS)[number]
