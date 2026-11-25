@@ -529,7 +529,10 @@ export async function deleteWorkPost(
   revalidatePath('/profile/feed')
   revalidateTag('feed', 'max')
 
-  redirect('/profile/work', 'push')
+  // Deliberately NO redirect: the caller stays on the page it deleted from
+  // and refreshes in place (router.refresh()). A redirect here navigated to
+  // /profile/work, which is a retired route that now 404s.
+  return {}
 }
 
 /**

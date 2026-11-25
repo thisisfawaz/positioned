@@ -1,53 +1,62 @@
 import { Skeleton } from '@/components/ui/Skeleton'
 
 /**
- * Profile skeleton - matches ProfileBody: cover banner, overlapping avatar,
- * name and handle, title line, bio, then the posts section.
+ * Profile skeleton - mirrors the CURRENT ProfileBody layout:
  *
- * Without this, a profile route fell back to the app-level skeleton, which used
- * to be feed-shaped - so the page visibly morphed from a feed into a profile.
+ *   - no cover banner (removed from the real page)
+ *   - a plain white panel, max-w-[980px], NOT a bordered rounded card
+ *   - avatar on the LEFT with name/handle/bio stacked to its RIGHT
+ *   - action buttons, meta row, then a tab bar
+ *   - the Published tab renders a 3-column square tile grid
+ *
+ * Keep this in sync with ProfileBody + ProfilePosts: the old version still
+ * drew a cover image and an overlapping avatar, so the page visibly morphed
+ * from that shape into the real one when data arrived.
  */
 export default function ProfileLoading() {
   return (
-    <div className="w-full pb-4">
-      <div className="overflow-hidden rounded-[1.25rem] border border-line bg-white">
-        {/* Cover */}
-        <Skeleton className="h-32 rounded-none" />
-
-        <div className="px-4 pb-4">
-          {/* Avatar overlaps the cover, as in the real page */}
-          <div className="-mt-12 flex items-end justify-between">
-            <Skeleton className="h-24 w-24 rounded-[1.5rem] border-4 border-white" />
-            <Skeleton className="mb-1 h-9 w-28 rounded-xl" />
+    <div className="mx-auto w-full max-w-[980px] overflow-hidden bg-white lg:rounded-2xl">
+      <div className="px-0 pb-5 pt-1 sm:px-4 lg:pt-3">
+        <div className="px-3 sm:px-0">
+          {/* Avatar left, name/handle/bio right. */}
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-24 w-24 flex-shrink-0 rounded-[1.5rem] sm:h-28 sm:w-28" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <Skeleton className="h-6 w-44" />
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-4 w-36" />
+            </div>
           </div>
 
-          <div className="mt-3 space-y-2">
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-3 w-28" />
-            <Skeleton className="h-4 w-36" />
-            <Skeleton className="h-3 w-52" />
+          {/* Action buttons. */}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Skeleton className="h-8 w-28 rounded-xl sm:h-9 sm:w-32" />
+            <Skeleton className="h-8 w-24 rounded-xl sm:h-9 sm:w-28" />
           </div>
 
-          <div className="mt-3 space-y-2">
-            <Skeleton className="h-3 w-full" />
-            <Skeleton className="h-3 w-11/12" />
-            <Skeleton className="h-3 w-2/3" />
+          {/* Location / post count / availability. */}
+          <div className="mt-3 flex items-center gap-3">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-3 w-14" />
           </div>
-        </div>
-
-        {/* Section heading */}
-        <div className="border-b border-line px-4 py-3">
-          <Skeleton className="h-3.5 w-24" />
-        </div>
-
-        {/* One post card */}
-        <div className="p-4">
-          <Skeleton className="h-4 w-3/4" />
-          <Skeleton className="mt-2 h-3 w-full" />
-          <Skeleton className="mt-1.5 h-3 w-5/6" />
-          <Skeleton className="mt-3 h-3 w-40" />
         </div>
       </div>
+
+      {/* Tab bar: Posts | About | Experience. */}
+      <div className="flex items-center gap-5 border-b border-line px-4">
+        <Skeleton className="my-3 h-4 w-12" />
+        <Skeleton className="my-3 h-4 w-12" />
+        <Skeleton className="my-3 h-4 w-20" />
+      </div>
+
+      {/* Published tab: 3-column square tile grid, same gaps as the real one. */}
+      <ul className="grid grid-cols-3 gap-[2px] p-0 sm:gap-1 sm:p-1">
+        {Array.from({ length: 9 }).map((_, i) => (
+          <li key={i}>
+            <Skeleton className="aspect-square rounded-none" />
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
+import { useRouter } from 'next/navigation'
 import { Modal } from '@/components/ui/Modal'
 import { updatePostText, deleteWorkPost } from '@/app/(app)/profile/work/actions'
 
@@ -33,6 +34,7 @@ export function PostOwnerMenu({
   const [caption, setCaption] = useState(initialCaption)
   const [aspect, setAspect] = useState<AspectRatio>(initialAspect)
   const [pending, start] = useTransition()
+  const router = useRouter()
   const [err, setErr] = useState<string | null>(null)
   const btnRef = useRef<HTMLButtonElement | null>(null)
   const [pos, setPos] = useState<{ top: number; right: number } | null>(null)
@@ -204,7 +206,14 @@ export function PostOwnerMenu({
                     const fd = new FormData()
                     fd.set('postId', postId)
                     const res: any = await deleteWorkPost(fd)
-                    if (res?.error) setErr(res.error)
+                    if (res?.error) {
+                      setErr(res.error)
+                    } else {
+                      setConfirmDel(false)
+                      // Stay on this page; re-fetch server data so the deleted
+                      // card disappears from wherever it was rendered.
+                      router.refresh()
+                    }
                   })
                 }
                 className="rounded-xl bg-rose-600 px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-60"

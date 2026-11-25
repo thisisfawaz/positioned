@@ -1,9 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { deleteWorkPost } from '@/app/(app)/profile/work/actions'
 
 export function DeleteWorkButton({ postId }: { postId: string }) {
+  const router = useRouter()
   const [confirming, setConfirming] = useState(false)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -18,7 +20,12 @@ export function DeleteWorkButton({ postId }: { postId: string }) {
       setError(result.error)
       setPending(false)
       setConfirming(false)
+      return
     }
+    // Success: stay on this page and re-fetch so the deleted post disappears.
+    setPending(false)
+    setConfirming(false)
+    router.refresh()
   }
 
   if (!confirming) {
