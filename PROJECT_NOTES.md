@@ -3534,7 +3534,7 @@ Reference: `Screenshot 2026-11-04 155409.png` (HelpBnk).
 - Both callers pass `user.professionalProfile.profilePhoto ?? user.recruiterProfile.profilePhoto`.
 
 ### Arrow glyphs -> SVG (`components/icons.tsx`)
-Every text arrow was replaced with a real icon; there are NO arrow glyphs left in the app.
+Every text arrow was replaced with a real icon. **CORRECTION (2026-11-25): the original claim here - "there are NO arrow glyphs left in the app" - was WRONG.** The sweep behind it only tested `[→←↑↓➜➔➡⬆⬇▶◀]`, which does not include `↗` (U+2197). Three `↗` survived: the Apply CTA in `WorkCard.tsx` and the CV/Portfolio links in `ResponsesClient.tsx`. On desktop they render as a thin glyph; on iOS/Android the system falls back to the EMOJI font for U+2197, so they appeared as colour emoji on phones. All three are now inline stroke SVGs. **Search arrow code points with the full range `[\u2190-\u21FF\u27F0-\u27FF\u2B00-\u2BFF\uFE0F]`, not a hand-picked list.**
 - `←` back links -> `BackIcon` + `aria-label="Back"` (recruitments detail, work detail, professionals profile, recruitments edit/new, work edit/new, requests fulfil, signup "Change account type").
 - `All posts →` -> `ArrowIcon` (BoostForm, WorkPerformanceList).
 - `›` -> `ChevronIcon direction="right"` (ResponsesClient).
@@ -3582,3 +3582,40 @@ Old state: category chips matched a SUBSTRING against the author's job title (no
 - **Explore reel now passes `viewerId`** (`getCurrentUser()`), which is what gates the owner-only Edit/Delete controls in `WorkCard`. Without it the `viewerId &&` branch never ran, so owners saw no controls on posts opened from Explore.
 - **PostOwnerMenu rebuilt as:** 3 dots -> small portalled dropdown (Edit / Delete) -> full-screen Edit or Delete modal. The dropdown MUST be portalled to `document.body`: the reel's author bar carries an inline `transform`, and a transformed ancestor becomes the containing block for `position: fixed`, which made an in-tree dropdown position against the header strip and appear behind the post. Opening the modals is deferred one tick so the dropdown unmounts first.
 - **STILL UNRESOLVED:** in the Edit/Delete modals only the title bar renders on mobile. Tried: removing `fullScreenOnMobile={false}`, adding `w-full flex-shrink-0`, explicit `minHeight`, explicit background. None confirmed working. Next step must be instrumenting the modal (log whether children mount) rather than more CSS guesses.
+
+---
+
+## Session: YouTube Shorts, reel video taps, autoplay-on-end, video thumbnails
+
+### YouTube URL parsing - one parser, Shorts supported (`lib/client/youtube.ts`)
+- **BUG:** YouTube Shorts links were rejected as video posts. The regex in FOUR places only matched `watch?v=` and `youtu.be/`, so `youtube.com/shorts/<id>` failed validation.
+- Duplication was the root cause: `youtubeVideoId()` in `lib/client/youtube.ts`, a local `youtubeEmbed()` in `NewWorkForm.tsx`, another in `RecruitmentForm.tsx`, and `parseYouTube()` in `app/(app)/profile/work/actions.ts`. One missing URL shape had to be fixed in four places.
+- **Fix - deduplicated:** `youtubeVideoId()` now matches `embed/`, `watch?v=`, `shorts/`, `live/`, `youtu.be/`, and bare 11-char ids. Added `youtubeEmbedUrl(raw)` beside it returning `https://www.youtube.com/embed/<id>`. The three local copies were DELETED and now import the shared helper (`NewWorkForm`/`RecruitmentForm` alias it as `youtubeEmbed`; the server action does `const parseYouTube = youtubeEmbedUrl`).
+- Not supported: `m.youtube.com` / `music.youtube.com` subdomains. The regex requires `youtube.com/` unprefixed.
+
+### Reel video taps: body toggles chrome, only the play button pauses (`VideoPlayer.tsx`)
+- **PROBLEM:** tapping a photo toggled the header/bottom navbar; tapping a video did not, except in a few dead zones. The player rendered a full-bleed `<button>` that toggled play/pause, and `ReelFeed`'s `touchend` guard (`closest('a, button, ...')`) skipped it - so video and image behaved INVERTED.
+- **Fix:** the full-bleed `<button>` is now a plain `<div>` tap layer that does not pause/play. Play/pause lives ONLY on the centered play button, which sits above the layer and stops its own pointer events. Body taps now bubble to `ReelFeed` and toggle the chrome exactly like a photo.
+- The play button's visibility follows `controlsHidden` (passed from `WorkCard` as `!isDesktop && chromeHidden`), so it shows/hides WITH the navbars. **Do not add `playing` to that visibility condition** - an earlier version did (`playing || controlsHidden`), which hid the button the instant playback started and left no way to pause.
+- The iframe wrapper carries `pointer-events-none` so YouTube's own controls can never be tapped. **Do NOT use `preventDefault()` on `touchstart`/`pointerdown` here** - that was tried and it cancelled the touch sequence, so `ReelFeed` never got the tap and the navbars stopped toggling entirely.
+
+### Autoplay-on-end setting (`UserSettings.autoplayVideo`)
+- On `ENDED` the player previously just set `playing = false` and stopped.
+- **New setting**, `UserSettings.autoplayVideo Boolean @default(true)` (migration `supabase/032_user_settings_autoplay_video.sql`). Added to `BOOLEAN_KEYS` in `app/api/settings/route.ts` and exposed as an "Autoplay video" toggle in a new **Playback** section on the Settings page.
+- When on, `ENDED` seeks to 0 and replays. The handler reads a REF (`autoplayOnEndRef`), not the value - the player-creating effect runs once and would otherwise capture a stale setting.
+- `VideoPlayer` reads the setting with `useCached('/api/settings')` (SWR-backed module cache), so every player shares one request instead of threading a prop through `ReelFeed` -> `WorkCard` -> `VideoPlayer`.
+- **The timeline needs an explicit reset on replay:** it only advances from `emit` ticks while `playing`, so on replay it stayed parked at the end. The `ENDED` handler now calls `emit(0, getDuration())` after `seekTo(0)`.
+
+### Profile grid: video thumbnails (`components/profile/ProfilePosts.tsx`)
+- Video posts have no `MediaAsset`, so the tile fell back to a title-only gradient block.
+- Tiles now fall back to YouTube's poster (`https://i.ytimg.com/vi/<id>/hqdefault.jpg`, id via the shared `youtubeVideoId`) and render a small play badge in the corner for video posts.
+- No API change needed: `/api/profile/[username]` uses `include` on `mediaAssets`, which already returns every `WorkPost` scalar including `videoUrl` and `mediaType`.
+- Known gaps: a deleted/private video renders a broken poster (no `onError` fallback to the gradient); Cloudinary-uploaded (`VIDEO`) posts get the play badge but no poster frame.
+
+### Apply / CV / Portfolio arrows: emoji on mobile (`WorkCard.tsx`, `ResponsesClient.tsx`)
+- See the CORRECTION in the older "Arrow glyphs -> SVG" section above. The three surviving `↗` are now inline stroke SVGs, sized 13px (Apply) and 12px (CV/Portfolio), `stroke="currentColor"`, no fill.
+- Verified with the full Unicode arrow range: no matches remain.
+
+### Not verified in a browser (all of the above)
+- Everything here was checked with `npx tsc --noEmit` only. The reel tap/scroll interaction, the autoplay loop, and the profile thumbnails need a real mobile pass.
+- **Migration `032` had not been applied** as of this entry. `/api/settings` will fail on the missing `autoplayVideo` column until it runs.

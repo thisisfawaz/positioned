@@ -153,7 +153,21 @@ export function ResponsesClient({ groups }: { groups: ResponseGroup[] }) {
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1.5 rounded-full border border-line px-3.5 py-1.5 text-[13px] font-semibold text-ink transition-colors hover:border-brand"
                         >
-                          CV ↗
+                          CV
+                          <svg
+                            width="12"
+                            height="12"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                          >
+                            <path d="M7 17L17 7" />
+                            <path d="M9 7h8v8" />
+                          </svg>
                         </a>
                       )}
                       {r.portfolioUrl && (
@@ -163,7 +177,21 @@ export function ResponsesClient({ groups }: { groups: ResponseGroup[] }) {
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1.5 rounded-full border border-line px-3.5 py-1.5 text-[13px] font-semibold text-ink transition-colors hover:border-brand"
                         >
-                          Portfolio ↗
+                          Portfolio
+                          <svg
+                            width="12"
+                            height="12"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                          >
+                            <path d="M7 17L17 7" />
+                            <path d="M9 7h8v8" />
+                          </svg>
                         </a>
                       )}
                     </div>
