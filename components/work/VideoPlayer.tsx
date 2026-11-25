@@ -103,9 +103,16 @@ function formatTime(seconds: number): string {
 /** What VideoPlayer hands to the caller so a timeline can drive it. */
 export type VideoPlayerHandle = {
   seekTo: (seconds: number) => void
-  /** Subscribe to position changes; returns an unsubscribe fn. */
-  subscribe: (fn: (state: { current: number; duration: number }) => void) => () => void
+  /** Subscribe to position changes + play/mute state; returns an unsubscribe fn. */
+  subscribe: (
+    fn: (state: { current: number; duration: number; playing: boolean; muted: boolean }) => void
+  ) => () => void
   getDuration: () => number
+  /** Play/pause/mute control, exposed so the timeline owns those buttons. */
+  togglePlay: () => void
+  toggleMute: () => void
+  isPlaying: () => boolean
+  isMuted: () => boolean
 }
 
 export const VideoPlayer = forwardRef<
@@ -131,10 +138,19 @@ export const VideoPlayer = forwardRef<
 
   // Subscribers for the timeline(s).
   const listenersRef = useRef(
-    new Set<(s: { current: number; duration: number }) => void>()
+    new Set<
+      (s: { current: number; duration: number; playing: boolean; muted: boolean }) => void
+    >()
   )
+  // Latest playing/muted mirrored into refs so a fresh subscriber gets a
+  // correct initial snapshot without waiting for the next tick.
+  const playingRef = useRef(false)
+  const mutedRef = useRef(true)
+  playingRef.current = playing
+  mutedRef.current = muted
   const emit = (current: number, duration: number) => {
-    listenersRef.current.forEach((fn) => fn({ current, duration }))
+    const state = { current, duration, playing: playingRef.current, muted: mutedRef.current }
+    listenersRef.current.forEach((fn) => fn(state))
   }
 
   // Create the player once the API is available.
@@ -237,6 +253,14 @@ export const VideoPlayer = forwardRef<
     return () => io.disconnect()
   }, [ready])
 
+  // Whenever the play state flips, publish immediately so the timeline's
+  // play/pause icon updates the instant it changes (the interval below only
+  // runs while playing, so a pause would otherwise never reach it).
+  useEffect(() => {
+    const p = playerRef.current
+    emit(p ? p.getCurrentTime() : 0, p ? p.getDuration() : 0)
+  }, [playing])
+
   // While playing, push position to subscribers so the timeline advances.
   useEffect(() => {
     if (!playing) return
@@ -260,10 +284,34 @@ export const VideoPlayer = forwardRef<
       subscribe: (fn) => {
         listenersRef.current.add(fn)
         const p = playerRef.current
-        if (p) fn({ current: p.getCurrentTime(), duration: p.getDuration() })
+        fn({
+          current: p ? p.getCurrentTime() : 0,
+          duration: p ? p.getDuration() : 0,
+          playing: playingRef.current,
+          muted: mutedRef.current,
+        })
         return () => listenersRef.current.delete(fn)
       },
       getDuration: () => playerRef.current?.getDuration() ?? 0,
+      togglePlay: () => {
+        const p = playerRef.current
+        if (!p) return
+        if (p.getPlayerState() === PLAYING) p.pauseVideo()
+        else p.playVideo()
+      },
+      toggleMute: () => {
+        const p = playerRef.current
+        if (!p) return
+        if (p.isMuted()) {
+          p.unMute()
+          setMuted(false)
+        } else {
+          p.mute()
+          setMuted(true)
+        }
+      },
+      isPlaying: () => playingRef.current,
+      isMuted: () => mutedRef.current,
     }),
     []
   )
@@ -276,32 +324,13 @@ export const VideoPlayer = forwardRef<
     )
   }
 
-  const togglePlay = () => {
-    const p = playerRef.current
-    if (!p) return
-    if (p.getPlayerState() === PLAYING) p.pauseVideo()
-    else p.playVideo()
-  }
-
-  const toggleMute = () => {
-    const p = playerRef.current
-    if (!p) return
-    if (muted) {
-      p.unMute()
-      setMuted(false)
-    } else {
-      p.mute()
-      setMuted(true)
-    }
-  }
-
   return (
     <div className="absolute inset-0">
-      {/* The iframe mounts here, behind our tap layer. pointer-events-none so
-          the iframe can never receive a tap (YouTube's own controls stay inert)
-          WITHOUT cancelling the touch event - a preventDefault on touchstart
-          killed the reel's own tap-to-toggle. */}
-      <div ref={wrapperRef} className="pointer-events-none absolute inset-0">
+      {/* The iframe mounts here, behind the four tap strips below. The strips
+          cover everything except a centered square, so only that square lets a
+          tap reach YouTube's own visible play glyph. Everywhere else the strips
+          sit on top and keep YouTube's UI inert. */}
+      <div ref={wrapperRef} className="absolute inset-0">
         {/* Thumbnail poster: shown until the video actually starts, so the
             frame is never blank (e.g. muted autoplay blocked on iOS, or before
             the player initialises). YouTube serves this from its image CDN. */}
@@ -317,80 +346,16 @@ export const VideoPlayer = forwardRef<
         <div ref={containerRef} className="h-full w-full" />
       </div>
 
-      {/* Tap layer: a PLAIN layer, not a button. Taps on the video body fall
-          through to the reel's own tap handler so they show/hide the navbars
-          exactly like a photo does. Nothing here pauses or plays.
+      {/* Tap layer: four strips around a centered square hole (96px). Taps
+          outside the hole are blocked from the YouTube iframe (its title bar /
+          edge controls stay inert) and bubble to the reel's own navbar toggle.
+          The hole is left uncovered so a tap there reaches YouTube's visible
+          play glyph and actually pauses/plays. */}
+      <div className="absolute inset-x-0 top-0" style={{ bottom: 'calc(50% + 48px)' }} />
+      <div className="absolute inset-x-0 bottom-0" style={{ top: 'calc(50% + 48px)' }} />
+      <div className="absolute top-1/2 -translate-y-1/2" style={{ left: 0, right: 'calc(50% + 48px)', height: '96px' }} />
+      <div className="absolute top-1/2 -translate-y-1/2" style={{ left: 'calc(50% + 48px)', right: 0, height: '96px' }} />
 
-          It also BLOCKS taps from reaching the YouTube iframe underneath, so
-          YouTube's own play/pause overlay and title bar can never be operated
-          or appear in the way. The iframe stays visually behind this layer. */}
-      <div className="absolute inset-0" />
-
-      {/* COVER for YouTube's own center play glyph. The iframe draws its own
-          button that playerVars cannot remove; this solid disc sits over that
-          exact spot so it is never seen. It follows the SAME visibility as our
-          play button (both hide with the chrome), so it never shows as a bare
-          black circle on a playing video. Our button renders on top of it. */}
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <div
-          aria-hidden="true"
-          className={`h-16 w-16 rounded-full bg-black transition-opacity ${
-            controlsHidden ? 'opacity-0' : 'opacity-100'
-          }`}
-        />
-      </div>
-
-      {/* The ONLY play/pause control: the play button. It sits above the tap
-          layer and stops its own taps, so tapping it never toggles the chrome. */}
-      {ready && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <button
-            type="button"
-            aria-label={playing ? 'Pause' : 'Play'}
-            onClick={togglePlay}
-            onPointerDown={(e) => e.stopPropagation()}
-            onPointerUp={(e) => e.stopPropagation()}
-            className={`flex h-16 w-16 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur transition-opacity ${
-              controlsHidden
-                ? 'pointer-events-none opacity-0'
-                : 'pointer-events-auto opacity-100'
-            }`}
-          >
-            {playing ? (
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
-              </svg>
-            ) : (
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            )}
-          </button>
-        </div>
-      )}
-
-      {/* Mute toggle, top-right (out of the caption's way). */}
-      <div className="absolute right-3 top-16 z-30">
-        <button
-          type="button"
-          aria-label={muted ? 'Unmute' : 'Mute'}
-          onClick={toggleMute}
-          onPointerDown={(e) => e.stopPropagation()}
-          onPointerUp={(e) => e.stopPropagation()}
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur hover:bg-black/65"
-        >
-          {muted ? (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z" opacity="0.5" />
-              <path d="M4 4l16 16" stroke="currentColor" strokeWidth="2" />
-            </svg>
-          ) : (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z" />
-            </svg>
-          )}
-        </button>
-      </div>
     </div>
   )
 })
@@ -404,15 +369,19 @@ export const VideoPlayer = forwardRef<
 export function VideoTimeline({ playerRef }: { playerRef: React.RefObject<VideoPlayerHandle | null> }) {
   const [current, setCurrent] = useState(0)
   const [duration, setDuration] = useState(0)
+  const [playing, setPlaying] = useState(false)
+  const [muted, setMuted] = useState(true)
   const [scrubbing, setScrubbing] = useState(false)
   const trackRef = useRef<HTMLDivElement | null>(null)
 
-  // Subscribe to the player's position updates.
+  // Subscribe to the player's position + play-state updates.
   useEffect(() => {
     const player = playerRef.current
     if (!player) return
-    return player.subscribe(({ current, duration }) => {
+    return player.subscribe(({ current, duration, playing, muted }) => {
       if (!scrubbing) setCurrent(current)
+      setPlaying(playing)
+      setMuted(muted)
       if (duration && duration !== durationRef.current) {
         durationRef.current = duration
         setDuration(duration)
@@ -435,6 +404,26 @@ export function VideoTimeline({ playerRef }: { playerRef: React.RefObject<VideoP
 
   return (
     <div className="flex items-center gap-2 text-white">
+      {/* Play/pause at the START of the timeline. Ordinary DOM that stops
+          pointer propagation, so it never bubbles into the reel's tap/scroll. */}
+      <button
+        type="button"
+        aria-label={playing ? 'Pause' : 'Play'}
+        onClick={() => playerRef.current?.togglePlay()}
+        onPointerDown={(e) => e.stopPropagation()}
+        onPointerUp={(e) => e.stopPropagation()}
+        className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30"
+      >
+        {playing ? (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
+          </svg>
+        ) : (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        )}
+      </button>
       <div
         ref={trackRef}
         className="relative h-6 flex-1 cursor-pointer touch-none"
@@ -471,6 +460,27 @@ export function VideoTimeline({ playerRef }: { playerRef: React.RefObject<VideoP
       <span className="flex-shrink-0 text-[11px] tabular-nums text-white/90">
         {formatTime(current)} / {formatTime(duration)}
       </span>
+      {/* Mute toggle at the END of the timeline. Same chrome-visibility rules
+          as the rest of the card (it fades with the overlays on tap). */}
+      <button
+        type="button"
+        aria-label={muted ? 'Unmute' : 'Mute'}
+        onClick={() => playerRef.current?.toggleMute()}
+        onPointerDown={(e) => e.stopPropagation()}
+        onPointerUp={(e) => e.stopPropagation()}
+        className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30"
+      >
+        {muted ? (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z" opacity="0.5" />
+            <path d="M4 4l16 16" stroke="currentColor" strokeWidth="2" />
+          </svg>
+        ) : (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z" />
+          </svg>
+        )}
+      </button>
     </div>
   )
 }

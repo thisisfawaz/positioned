@@ -374,7 +374,7 @@ export function WorkCard({
   // reel, so it sits flush at the top edge - the original behaviour.
   const header = (
     <div
-      className={`absolute inset-x-0 top-0 flex items-center gap-3 bg-gradient-to-b from-black/60 to-transparent p-4 ${isDesktop ? '' : 'transition-transform duration-200'}`}
+      className={`absolute inset-x-0 top-0 flex items-center gap-3 bg-gradient-to-b from-black/60 to-transparent p-4 ${isDesktop ? '' : 'transition-all duration-200'} ${!isDesktop && chromeHidden ? 'pointer-events-none opacity-0' : 'opacity-100'}`}
       style={{
         transform: isDesktop
           ? undefined
@@ -483,7 +483,11 @@ export function WorkCard({
               can grow/animate cleanly. */}
           <div
             className={`absolute inset-x-0 bottom-0 overflow-hidden bg-gradient-to-t from-black/80 via-black/40 to-transparent px-4 text-white transition-all duration-300 ease-out ${
-              expanded ? 'pointer-events-none h-0 pb-0 pt-0 opacity-0' : 'pb-3 pt-16 opacity-100'
+              expanded
+                ? 'pointer-events-none h-0 pb-0 pt-0 opacity-0'
+                : !isDesktop && chromeHidden
+                  ? 'pointer-events-none pb-3 pt-16 opacity-0'
+                  : 'pb-3 pt-16 opacity-100'
             }`}
             style={{
               // MOBILE only: lift the collapsed caption above the bottom bar

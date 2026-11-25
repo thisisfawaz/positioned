@@ -59,16 +59,10 @@ export function ReelFeed({
     }
   }
 
+  // Chrome now hides ONLY on an explicit tap. The old 3s idle auto-hide is
+  // disabled so a scrolled-to post keeps its header/caption until tapped.
   const armIdle = () => {
     clearIdle()
-    // Desktop has no overlaid bars to hide - skip there.
-    if (isDesktopRef.current) return
-    idleTimer.current = setTimeout(() => {
-      if (barsHidden.current) return
-      barsHidden.current = true
-      setChromeHidden(true)
-      emitReelScroll(true)
-    }, 3000)
   }
 
   /** Step exactly one card up or down. Native snap snaps the rest. */
@@ -102,30 +96,36 @@ export function ReelFeed({
     const container = scrollRef.current
     if (!container) return
     let lastTop = container.scrollTop
+    // Which card index the chrome was last revealed for. Landing on a
+    // DIFFERENT card re-shows the chrome/overlays (until the next tap).
+    let lastCardIndex = Math.round(container.scrollTop / Math.max(1, container.clientHeight))
 
     const onScroll = () => {
-      // Any scroll resumes normal behaviour: cancel the pending auto-hide and
-      // re-arm it once the user settles again.
-      armIdle()
-
       const top = container.scrollTop
-      const delta = top - lastTop
       lastTop = top
 
       // Near the very top, always show.
       if (top < 8) {
-        barsHidden.current = false
-        setChromeHidden(false)
-        emitReelScroll(false)
+        if (barsHidden.current) {
+          barsHidden.current = false
+          setChromeHidden(false)
+          emitReelScroll(false)
+        }
         return
       }
-      // Ignore tiny deltas (momentum jitter).
-      if (Math.abs(delta) < 6) return
 
-      const hidden = delta > 0
-      barsHidden.current = hidden
-      setChromeHidden(hidden)
-      emitReelScroll(hidden)
+      // Scrolling to a DIFFERENT card reveals the chrome again. Scrolling
+      // never HIDES it - only a tap does.
+      const h = Math.max(1, container.clientHeight)
+      const cardIndex = Math.round(top / h)
+      if (cardIndex !== lastCardIndex) {
+        lastCardIndex = cardIndex
+        if (barsHidden.current) {
+          barsHidden.current = false
+          setChromeHidden(false)
+          emitReelScroll(false)
+        }
+      }
     }
 
     container.addEventListener('scroll', onScroll, { passive: true })
