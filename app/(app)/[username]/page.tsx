@@ -20,28 +20,53 @@ type ProfileResponse = {
 }
 
 function ProfileSkeleton() {
+  // Mirrors the CURRENT ProfileBody layout: avatar LEFT with name/handle/bio to
+  // its RIGHT, action buttons, meta row, the Posts | About | Experience tab bar,
+  // then a 3-column square tile grid. Kept in sync with loading.tsx so the page
+  // never morphs from a different shape into the real one when data arrives.
   return (
     <div className="mx-auto w-full max-w-[980px] overflow-hidden bg-white lg:rounded-2xl">
-      <div className="px-3 pb-5 pt-3 sm:px-4">
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-24 w-24 rounded-[1.5rem] sm:h-28 sm:w-28" />
-          <div className="min-w-0 flex-1 space-y-2">
-            <Skeleton className="h-6 w-40" />
-            <Skeleton className="h-3.5 w-28" />
-            <Skeleton className="h-4 w-48" />
+      <div className="px-0 pb-5 pt-1 sm:px-4 lg:pt-3">
+        <div className="px-3 sm:px-0">
+          {/* Avatar left, name/handle/bio right. */}
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-24 w-24 flex-shrink-0 rounded-[1.5rem] sm:h-28 sm:w-28" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <Skeleton className="h-6 w-44" />
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-4 w-36" />
+            </div>
+          </div>
+
+          {/* Action buttons. */}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Skeleton className="h-8 w-28 rounded-xl sm:h-9 sm:w-32" />
+            <Skeleton className="h-8 w-24 rounded-xl sm:h-9 sm:w-28" />
+          </div>
+
+          {/* Location / post count / availability. */}
+          <div className="mt-3 flex items-center gap-3">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-3 w-14" />
           </div>
         </div>
-        <div className="mt-4 space-y-2">
-          <Skeleton className="h-3 w-full" />
-          <Skeleton className="h-3 w-11/12" />
-          <Skeleton className="h-3 w-2/3" />
-        </div>
       </div>
-      <div className="grid grid-cols-2 gap-2 px-3 pb-5 sm:grid-cols-3 sm:px-4">
-        {[0, 1, 2, 3, 4, 5].map((i) => (
-          <Skeleton key={i} className="aspect-square w-full rounded-xl" />
+
+      {/* Tab bar: Posts | About | Experience. */}
+      <div className="flex items-center gap-5 border-b border-line px-4">
+        <Skeleton className="my-3 h-4 w-12" />
+        <Skeleton className="my-3 h-4 w-12" />
+        <Skeleton className="my-3 h-4 w-20" />
+      </div>
+
+      {/* Published tab: 3-column square tile grid, same gaps as the real one. */}
+      <ul className="grid grid-cols-3 gap-[2px] p-0 sm:gap-1 sm:p-1">
+        {Array.from({ length: 9 }).map((_, i) => (
+          <li key={i}>
+            <Skeleton className="block w-full aspect-square rounded-none" />
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   )
 }
@@ -60,7 +85,7 @@ export default function ProfilePage({
   if (error && (error as any)?.status === 404) notFound()
 
   return (
-    <div className="flex-1 min-w-0 w-full px-0 pb-4 pt-3 sm:px-4 lg:px-6">
+    <div className="flex-1 min-w-0 w-full px-0 pb-4 pt-2 sm:px-4 lg:px-6">
       {!data ? (
         <ProfileSkeleton />
       ) : (

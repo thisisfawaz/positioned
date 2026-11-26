@@ -74,10 +74,14 @@ export default function ExplorePage() {
   if (media !== DEFAULT_MEDIA) params.set('media', media)
   const swrKey = `/api/explore-grid?${params.toString()}`
 
-  const { data, isLoading } = useSWR<{ items: GridItem[]; nextCursor: string | null }>(swrKey)
+  const { data, error } = useSWR<{ items: GridItem[]; nextCursor: string | null }>(swrKey)
 
   const items = data?.items ?? []
   const cursor = data?.nextCursor ?? null
+  // Treat "no data yet" as loading. Without this, an undefined result (still
+  // fetching, or the key just changed) rendered as the EMPTY state, because
+  // `items.length === 0` was true and `isLoading` was already false.
+  const showLoading = !data && !error
 
   const activeCount =
     (sort !== DEFAULT_SORT ? 1 : 0) + (media !== DEFAULT_MEDIA ? 1 : 0)
@@ -86,7 +90,7 @@ export default function ExplorePage() {
 
   return (
     <div className="w-full pb-6">
-      <div className="px-3 sm:px-4 lg:pt-6">
+      <div className="px-3 pt-2 sm:px-4 lg:pt-6">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h1 className="text-[20px] font-bold tracking-tight text-ink sm:text-[26px]">Explore</h1>
@@ -124,7 +128,7 @@ export default function ExplorePage() {
 
       {/* Grid */}
       <div className="mt-4 px-3 sm:px-4">
-        {isLoading ? (
+        {showLoading ? (
           <div className="columns-2 gap-3 sm:columns-3 lg:columns-4">
             {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
               const tall = i % 5 === 0 || i % 7 === 0

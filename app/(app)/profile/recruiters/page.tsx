@@ -45,7 +45,7 @@ export default function RecruitersPage() {
     (organization ? 1 : 0) + (location ? 1 : 0) + (verifiedOnly ? 1 : 0)
 
   return (
-    <div className="flex-1 min-w-0 w-full pb-4">
+    <div className="flex-1 min-w-0 w-full pb-4 pt-2">
       <div className="mb-4">
         <h1 className="text-[22px] font-bold text-ink">Recruiters</h1>
         <p className="mt-1 text-[14px] text-ink-muted">

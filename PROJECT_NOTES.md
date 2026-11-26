@@ -3619,3 +3619,50 @@ Old state: category chips matched a SUBSTRING against the author's job title (no
 ### Not verified in a browser (all of the above)
 - Everything here was checked with `npx tsc --noEmit` only. The reel tap/scroll interaction, the autoplay loop, and the profile thumbnails need a real mobile pass.
 - **Migration `032` had not been applied** as of this entry. `/api/settings` will fail on the missing `autoplayVideo` column until it runs.
+
+---
+
+## Session: reel chrome hides fully, video controls move to the timeline
+
+### Tap hides EVERYTHING, not just the navbars (`ReelFeed.tsx`, `WorkCard.tsx`)
+- **Before:** a tap slid the navbars away but the card's author header and collapsed caption (timeline, CTA, action rail, caption text) stayed on screen.
+- **`WorkCard`:** the author `header` and the collapsed caption now fade to `opacity-0` and go `pointer-events-none` when `!isDesktop && chromeHidden`. Desktop is unaffected (guarded by `isDesktop`). The existing `translateY` / `paddingBottom` nudges were kept.
+- Net: one tap leaves only the media; a second tap restores everything.
+
+### Chrome shows on a new post and hides ONLY on tap (`ReelFeed.tsx`)
+- The 3s idle auto-hide (`armIdle`) is now a no-op - it only clears a timer. A scrolled-to post keeps its header/caption indefinitely.
+- The scroll handler no longer hides on downward scroll nor reveals on upward scroll. It only REVEALS: when the reel settles on a DIFFERENT card index (`Math.round(scrollTop / clientHeight)`), and when scrolled back near the top. Scrolling never hides; only a tap does.
+
+### VideoPlayer: no center button, YouTube glyph reachable, controls in the timeline (`VideoPlayer.tsx`)
+- The black cover disc and the custom centered play/pause button are GONE (removed in an earlier session; this session cleaned up the remainder). YouTube's own center glyph is visible when paused - accepted deliberately.
+- The full-cover tap layer is now FOUR strips around a centered 96x96px hole. The iframe wrapper no longer carries `pointer-events-none`, so a tap inside the hole reaches YouTube's real glyph and plays/pauses; everywhere else the strips block YouTube's UI and the tap bubbles to the reel's chrome toggle.
+- **`VideoPlayerHandle` extended:** `subscribe` now delivers `{current, duration, playing, muted}`; added `togglePlay`, `toggleMute`, `isPlaying`, `isMuted`. `playing`/`muted` are mirrored into refs so a fresh subscriber gets a correct snapshot.
+- **`VideoTimeline`** renders a play/pause button at its LEFT end and a mute button at its RIGHT end (both 7x7, `stopPropagation` on pointer events). They are ordinary DOM inside the caption block, so they fade with the chrome on tap for free - identical on mobile and desktop.
+- The overlay mute button (previously at `right-3 top-28`, under the 3-dots) and the component-local `toggleMute` were deleted.
+- **Icon-staleness fix:** a `useEffect` on `[playing]` publishes state immediately, because the 250ms position interval only runs WHILE playing - a pause would otherwise never reach the timeline and it kept showing the pause icon.
+- Tapping the center hole intentionally does NOT toggle the navbars; that is the trade-off for making the visible YouTube glyph tappable.
+
+### Not verified in a browser
+- This session changed pointer-events behaviour on a YouTube iframe and the reel's tap/scroll logic. `npx tsc --noEmit` passes. The tap strips, the 96px hole alignment on real devices, and the strip-vs-reel tap split still need a mobile pass.
+
+### Commit
+- `6445819` "Reel: tap hides all card overlays; video controls move to timeline" (source only; PROJECT_NOTES.md deliberately not committed).
+
+---
+
+## Session: delete stays in place, profile skeleton refreshed
+
+### Delete no longer redirects to a dead route (`actions.ts`, `PostOwnerMenu.tsx`, `DeleteWorkButton.tsx`)
+- **BUG:** deleting a post navigated to "Page not found". `deleteWorkPost` ended with `redirect('/profile/work', 'push')` - and `/profile/work` is a RETIRED route. Because it is a server action, the redirect response moved the browser before the client's `if (res?.error)` check could run.
+- **Fix:** the redirect was REMOVED from `deleteWorkPost`; it now `return {}`. Both callers stay on the page they deleted from and call `router.refresh()` on success, so server data re-fetches and the card drops out in place. Errors still render in the modal.
+- `DeleteWorkButton` now returns early on error and clears `pending`/`confirming` + refreshes on success (previously it left the button in a pending state on success).
+- Caveat: on the reel, deleting the card you are viewing re-renders the feed without it; scroll position may land on a neighbouring card. Needs a browser check.
+
+### Profile skeleton matched to the current profile (`app/(app)/[username]/loading.tsx`)
+- **Was stale:** it still drew a COVER BANNER, an overlapping avatar (`-mt-12`), a bordered rounded card, one CTA and a single text-only post block - none of which exist on the page any more.
+- **Now mirrors `ProfileBody` + `ProfilePosts`:** no cover; plain white `max-w-[980px]` panel; avatar LEFT with name/handle/bio to its right; two action buttons; location/post-count meta row; the Posts | About | Experience tab bar; and a 3-column square tile grid (9 tiles, `gap-[2px] sm:gap-1`).
+- It reuses the real container classes, so the frame does not shift when data lands.
+- Keep it in sync: any layout change to `ProfileBody`/`ProfilePosts` should be reflected here or the page morphs on load again.
+
+### Not verified in a browser
+- `npx tsc --noEmit` passes. The delete-in-place flow and the skeleton's visual match both need a real pass (skeletons only appear on cold navigation/refresh).

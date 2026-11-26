@@ -24,7 +24,7 @@ export default function TrendingPage() {
   const recentCount = data?.recentCount ?? 0
 
   return (
-    <div className="flex-1 min-w-0 w-full pb-4">
+    <div className="flex-1 min-w-0 w-full pb-4 pt-2">
       <div className="mb-4">
         <h1 className="text-[22px] font-bold text-ink">Trending</h1>
         <p className="mt-1 text-[14px] text-ink-muted">

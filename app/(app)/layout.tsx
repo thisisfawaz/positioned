@@ -1,4 +1,4 @@
-import { MobileTopBar, MobileBottomNav } from '@/components/navigation/MobileNav'
+import { MobileBottomNav } from '@/components/navigation/MobileNav'
 import { Sidebar } from '@/components/navigation/Sidebar'
 
 /**
@@ -15,14 +15,12 @@ import { Sidebar } from '@/components/navigation/Sidebar'
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[var(--background)]">
-      <MobileTopBar />
-
       {/* Two columns: nav rail + content. Pages control their own width. */}
       <div className="flex w-full items-start">
         <Sidebar />
 
-        {/* The mobile top bar is `fixed`, so it is OUT of flow: normal pages
-            pad by the shared --topbar-h/--bottombar-h so they clear both bars. */}
+        {/* The mobile bottom bar is `fixed`, so it is OUT of flow: normal pages
+            pad by the shared --bottombar-h so they clear it. Mobile has no top bar. */}
         <main className="app-main min-w-0 flex-1">
           {children}
         </main>

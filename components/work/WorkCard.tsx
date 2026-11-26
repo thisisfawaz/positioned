@@ -368,20 +368,12 @@ export function WorkCard({
     </div>
   )
 
-  // The author header, overlaid on the media in BOTH states. On MOBILE it is
-  // pushed down by the top bar height while the bar is visible (transform
-  // only, so it tracks the bar smoothly). DESKTOP has no fixed bar over the
-  // reel, so it sits flush at the top edge - the original behaviour.
+  // The author header, overlaid on the media in BOTH states. MOBILE no longer
+  // has a top bar, so it sits flush at the top edge - no translateY offset.
+  // DESKTOP has no fixed bar over the reel either, so both match: flush top.
   const header = (
     <div
       className={`absolute inset-x-0 top-0 flex items-center gap-3 bg-gradient-to-b from-black/60 to-transparent p-4 ${isDesktop ? '' : 'transition-all duration-200'} ${!isDesktop && chromeHidden ? 'pointer-events-none opacity-0' : 'opacity-100'}`}
-      style={{
-        transform: isDesktop
-          ? undefined
-          : chromeHidden
-            ? 'translateY(0)'
-            : 'translateY(var(--topbar-h))',
-      }}
     >
       <div className="flex-shrink-0">
         <Link

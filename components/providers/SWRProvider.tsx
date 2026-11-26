@@ -8,12 +8,16 @@ export function SWRProvider({ children }: { children: React.ReactNode }) {
     <SWRConfig
       value={{
         fetcher,
-        // Only refetch on mount if there is no cached data.
-        revalidateIfStale: false,
-        revalidateOnFocus: false,
-        revalidateOnReconnect: false,
+        // Pages must feel LIVE: show cached data immediately (keepPreviousData)
+        // but ALWAYS revalidate against the server so a switch shows current
+        // data, not whatever was cached earlier in the session. A short dedupe
+        // still collapses bursts of identical requests on one render.
+        revalidateIfStale: true,
+        revalidateOnMount: true,
+        revalidateOnFocus: true,
+        revalidateOnReconnect: true,
         keepPreviousData: true,
-        dedupingInterval: 60000,
+        dedupingInterval: 2000,
       }}
     >
       {children}

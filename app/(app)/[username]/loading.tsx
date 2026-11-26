@@ -53,7 +53,7 @@ export default function ProfileLoading() {
       <ul className="grid grid-cols-3 gap-[2px] p-0 sm:gap-1 sm:p-1">
         {Array.from({ length: 9 }).map((_, i) => (
           <li key={i}>
-            <Skeleton className="aspect-square rounded-none" />
+            <Skeleton className="block w-full aspect-square rounded-none" />
           </li>
         ))}
       </ul>

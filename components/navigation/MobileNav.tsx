@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useUser } from '@/lib/client/use-user'
 import { useCached } from '@/lib/client/use-cached'
@@ -10,10 +10,7 @@ import {
   HomeIcon,
   CompassIcon,
   PlusIcon,
-  ChatIcon,
   BellIcon,
-  SearchIcon,
-  MenuIcon,
   CloseIcon,
 } from '@/components/icons'
 import { CreatePostTrigger } from '@/components/work/CreatePostTrigger'
@@ -22,103 +19,16 @@ import { NAV_ITEMS } from '@/components/navigation/navItems'
 import { REEL_SCROLL_EVENT, type ReelScrollDetail } from '@/lib/client/reel-scroll'
 
 /**
- * Mobile chrome, from the reference's phone screens: a brand bar with actions
- * at the top and a bottom tab bar with a raised centre button. Hidden at `lg`
- * and above, where the left rail takes over.
+ * Mobile chrome. The top brand bar has been removed: on mobile the bottom tab
+ * bar is the only chrome. The tab bar carries Home, Explore, a raised Create
+ * button, Notifications, and the user's PROFILE PHOTO in place of the old
+ * Messages tab. Tapping the photo opens a DRAWER containing the same nav as the
+ * desktop sidebar (NAV_ITEMS) plus a ProfileMenu (View profile / Sign out), so
+ * every link that used to live behind the top-bar hamburger is still reachable.
  *
- * The hamburger opens a DRAWER containing the same nav as the desktop sidebar
- * (NAV_ITEMS), so mobile and desktop stay in sync.
+ * Messages itself is still one tap away: it is the first item in the drawer
+ * (NAV_ITEMS). Hidden at `lg` and above, where the left rail takes over.
  */
-
-export function MobileTopBar() {
-  // Hide-on-scroll. RULE: the top bar only auto-hides on the FEED (the reel),
-  // where content runs edge-to-edge behind it. On every other page it stays put
-  // so the page keeps its header - scrolling a normal page must NOT slide it
-  // away. The feed scrolls inside its own container, so it reports direction
-  // via a custom event rather than moving window.scrollY.
-  const [hidden, setHidden] = useState(false)
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  const pathname = usePathname()
-  const { user } = useUser()
-  const avatarSrc =
-    user?.professionalProfile?.profilePhoto ??
-    user?.recruiterProfile?.profilePhoto ??
-    null
-
-  // Leaving a page must never carry its hidden state over: navs remount on
-  // route change and previously inherited the reel's "hidden" event, so the
-  // bar stayed gone everywhere after visiting the feed or a profile reel.
-  useEffect(() => {
-    setHidden(false)
-  }, [pathname])
-
-  useEffect(() => {
-    const onReelScroll = (e: Event) => {
-      const detail = (e as CustomEvent<ReelScrollDetail>).detail
-      setHidden(Boolean(detail?.hidden))
-    }
-
-    window.addEventListener(REEL_SCROLL_EVENT, onReelScroll as EventListener)
-    return () => {
-      window.removeEventListener(REEL_SCROLL_EVENT, onReelScroll as EventListener)
-    }
-  }, [])
-
-  return (
-    <>
-      <header
-        className={`fixed inset-x-0 top-0 z-30 flex items-center justify-between border-b border-line bg-white px-4 transition-transform duration-200 lg:hidden ${
-          hidden ? '-translate-y-full' : 'translate-y-0'
-        }`}
-        style={{ height: 'var(--topbar-h)' }}
-      >
-        {/* Left: the user's profile photo doubles as the menu button. */}
-        <button
-          type="button"
-          onClick={() => setDrawerOpen(true)}
-          aria-label="Open menu"
-          className="-ml-1 flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-light text-[12px] font-bold text-ink"
-        >
-          {avatarSrc ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={avatarSrc} alt={user?.name ?? 'Profile'} className="h-full w-full object-cover" />
-          ) : user?.name ? (
-            initialsOf(user.name)
-          ) : (
-            <MenuIcon className="h-[21px] w-[21px]" />
-          )}
-        </button>
-
-        {/* Center: brand mark, absolutely centered so it stays put regardless
-            of the asymmetric side content. */}
-        <Link
-          href="/feed"
-          prefetch
-          className="absolute left-1/2 flex -translate-x-1/2 items-center gap-2"
-        >
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-[15px] font-bold text-white">
-            P
-          </span>
-          <span className="text-[16px] font-bold tracking-tight text-ink">Positioned</span>
-        </Link>
-
-        {/* Right: search. */}
-        <div className="flex items-center gap-1">
-          <Link
-            href="/explore"
-            prefetch
-            aria-label="Search"
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-muted"
-          >
-            <SearchIcon className="h-[19px] w-[19px]" />
-          </Link>
-        </div>
-      </header>
-
-      <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-    </>
-  )
-}
 
 function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const pathname = usePathname()
@@ -151,7 +61,7 @@ function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void })
   return (
     <div className="fixed inset-0 z-50 lg:hidden">
       <div className="absolute inset-0 bg-ink/30 backdrop-blur-sm" onClick={onClose} />
-      <div className="absolute inset-y-0 left-0 flex w-[280px] max-w-[82vw] flex-col bg-surface shadow-xl">
+      <div className="absolute inset-0 flex w-full max-w-none flex-col bg-surface pb-[env(safe-area-inset-bottom)]">
         <div className="flex items-center justify-between border-b border-line px-4 py-3">
           <Link href="/feed" prefetch onClick={onClose} className="flex items-center gap-2">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-[15px] font-bold text-white">
@@ -172,7 +82,6 @@ function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void })
         <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon
-            const active = pathname === item.href || pathname?.startsWith(`${item.href}/`)
             const count = item.badge === 'messages' ? 0 : unreadCount
             return (
               <Link
@@ -180,11 +89,7 @@ function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void })
                 href={item.href}
                 prefetch
                 onClick={onClose}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium transition-colors ${
-                  active
-                    ? 'bg-brand-light text-ink'
-                    : 'text-ink-muted hover:bg-surface-sunken hover:text-ink'
-                }`}
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium text-ink-muted transition-colors hover:bg-surface-sunken hover:text-ink"
               >
                 <span className="relative flex-shrink-0">
                   <Icon className="h-[21px] w-[21px]" />
@@ -215,8 +120,11 @@ function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void })
 
 export function MobileBottomNav() {
   const pathname = usePathname()
+  const { user } = useUser()
+  const [drawerOpen, setDrawerOpen] = useState(false)
+
   // Slide the tab bar away while the user is scrolling through the reel, then
-  // bring it back on scroll-up or tap - same trigger as the top bar.
+  // bring it back on scroll-up or tap - same trigger the old top bar used.
   const [hidden, setHidden] = useState(false)
 
   // Reset on route change so a hidden bar from the reel never carries over.
@@ -234,6 +142,11 @@ export function MobileBottomNav() {
       window.removeEventListener(REEL_SCROLL_EVENT, onReelScroll as EventListener)
   }, [])
 
+  const avatarSrc =
+    user?.professionalProfile?.profilePhoto ??
+    user?.recruiterProfile?.profilePhoto ??
+    null
+
   const isActive = (href: string) =>
     pathname === href || pathname?.startsWith(`${href}/`)
 
@@ -243,38 +156,59 @@ export function MobileBottomNav() {
     }`
 
   return (
-    <nav
-      className={`fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-line bg-white pb-[env(safe-area-inset-bottom)] transition-transform duration-200 lg:hidden ${hidden ? 'translate-y-full' : 'translate-y-0'}`}
-      style={{ height: 'var(--bottombar-h)' }}
-    >
-      <Link href="/feed" prefetch className={tabClass('/feed')}>
-        <HomeIcon className="h-[21px] w-[21px]" />
-        Home
-      </Link>
-
-      <Link href="/explore" prefetch className={tabClass('/explore')}>
-        <CompassIcon className="h-[21px] w-[21px]" />
-        Explore
-      </Link>
-
-      <CreatePostTrigger
-        ariaLabel="Create post"
-        className="relative flex w-16 flex-col items-center justify-center"
+    <>
+      <nav
+        className={`fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-line bg-white pb-[env(safe-area-inset-bottom)] transition-transform duration-200 lg:hidden ${hidden ? 'translate-y-full' : 'translate-y-0'}`}
+        style={{ height: 'var(--bottombar-h)' }}
       >
-        <span className="-mt-4 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--brand-black)] text-[var(--surface)] shadow-[0_6px_16px_rgba(0,0,0,0.28)]">
-          <PlusIcon className="h-6 w-6" />
-        </span>
-      </CreatePostTrigger>
+        <Link href="/feed" prefetch className={tabClass('/feed')}>
+          <HomeIcon className="h-[21px] w-[21px]" />
+          Home
+        </Link>
 
-      <Link href="/profile/notifications" prefetch className={tabClass('/profile/notifications')}>
-        <BellIcon className="h-[21px] w-[21px]" />
-        Notifications
-      </Link>
+        <Link href="/explore" prefetch className={tabClass('/explore')}>
+          <CompassIcon className="h-[21px] w-[21px]" />
+          Explore
+        </Link>
 
-      <Link href="/messages" prefetch className={tabClass('/messages')}>
-        <ChatIcon className="h-[21px] w-[21px]" />
-        Messages
-      </Link>
-    </nav>
+        <CreatePostTrigger
+          ariaLabel="Create post"
+          className="relative flex w-16 flex-col items-center justify-center"
+        >
+          <span className="-mt-4 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--brand-black)] text-[var(--surface)] shadow-[0_6px_16px_rgba(0,0,0,0.28)]">
+            <PlusIcon className="h-6 w-6" />
+          </span>
+        </CreatePostTrigger>
+
+        <Link href="/profile/notifications" prefetch className={tabClass('/profile/notifications')}>
+          <BellIcon className="h-[21px] w-[21px]" />
+          Notifications
+        </Link>
+
+        {/* Profile photo replaces the old Messages tab. Tapping it opens the
+            drawer, which holds Messages (and every other NAV_ITEMS link) plus
+            View profile / Sign out. */}
+        <button
+          type="button"
+          onClick={() => setDrawerOpen(true)}
+          aria-label="Open menu"
+          className="flex flex-1 flex-col items-center gap-1 py-2 text-[10px] font-medium text-ink-subtle transition-colors"
+        >
+          <span className="flex h-[21px] w-[21px] items-center justify-center overflow-hidden rounded-full bg-brand-light text-[9px] font-bold text-ink">
+            {avatarSrc ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarSrc} alt={user?.name ?? 'Profile'} className="h-full w-full object-cover" />
+            ) : user?.name ? (
+              initialsOf(user.name)
+            ) : (
+              <HomeIcon className="h-[21px] w-[21px]" />
+            )}
+          </span>
+          Profile
+        </button>
+      </nav>
+
+      <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+    </>
   )
 }

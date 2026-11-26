@@ -44,7 +44,7 @@
      leak onto desktop; a media query does not. */
   @media (max-width: 1023px) {
     .app-main {
-      padding-top: var(--topbar-h);
+      /* No mobile top bar any more - only the bottom tab bar remains. */
       padding-bottom: var(--bottombar-h);
     }
   }

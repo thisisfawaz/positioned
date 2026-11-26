@@ -40,7 +40,7 @@ export default async function FulfilRequestPage({
   }
 
   return (
-    <div className="flex-1 min-w-0 w-full pb-4">
+    <div className="flex-1 min-w-0 w-full pb-4 pt-2">
       <div className="page-header flex items-center gap-3">
         <Link
           href="/profile/notifications"
