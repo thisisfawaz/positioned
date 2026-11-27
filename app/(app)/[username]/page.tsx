@@ -89,6 +89,7 @@ export default function ProfilePage({
       {!data ? (
         <ProfileSkeleton />
       ) : (
+        <div className="content-fade-in">
         <ProfileBody
           user={data.user}
           prof={data.prof}
@@ -101,6 +102,7 @@ export default function ProfilePage({
           canFollow={data.canFollow}
           viewerPremiumBlocked={data.viewerPremiumBlocked}
         />
+        </div>
       )}
     </div>
   )

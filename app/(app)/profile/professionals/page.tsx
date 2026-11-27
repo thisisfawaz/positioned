@@ -6,6 +6,7 @@ import { useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { initialsOf } from '@/lib/client/social'
 import { SearchIcon, SlidersIcon } from '@/components/icons'
+import { Skeleton } from '@/components/ui/Skeleton'
 
 type Professional = {
   id: string
@@ -145,15 +146,12 @@ function SkeletonList() {
   return (
     <div className="space-y-3">
       {[0, 1, 2, 3].map((i) => (
-        <div
-          key={i}
-          className="animate-pulse rounded-[1.25rem] border border-line bg-white p-5"
-        >
+        <div key={i} className="rounded-[1.25rem] border border-line bg-white p-5">
           <div className="flex gap-3">
-            <div className="h-12 w-12 rounded-xl bg-gray-200" />
+            <Skeleton className="h-12 w-12 rounded-xl" />
             <div className="flex-1 space-y-2">
-              <div className="h-3.5 w-40 rounded bg-gray-200" />
-              <div className="h-3 w-28 rounded bg-gray-200" />
+              <Skeleton className="h-3.5 w-40" />
+              <Skeleton className="h-3 w-28" />
             </div>
           </div>
         </div>

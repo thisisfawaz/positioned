@@ -175,6 +175,7 @@ export default function HomePage() {
     {!data ? (
       <FeedSkeleton />
     ) : (
+      <div className="content-fade-in">
       <ReelFeed
         posts={feed}
         viewerId={data?.viewerId}
@@ -185,6 +186,7 @@ export default function HomePage() {
         focusPostId={deepLinkPostId}
         emptyMessage="Nothing here yet. Share something you are working on."
       />
+      </div>
     )}
 
     </>

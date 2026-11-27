@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { relativeTime } from '@/lib/client/social'
+import { Skeleton } from '@/components/ui/Skeleton'
 import { SearchIcon, SlidersIcon } from '@/components/icons'
 
 type RecruitmentItem = {
@@ -128,13 +129,10 @@ export default function RecruitmentsPage() {
       {isLoading ? (
         <div className="space-y-3">
           {[0, 1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="animate-pulse rounded-[1.25rem] border border-line bg-white p-5"
-            >
+            <div key={i} className="rounded-[1.25rem] border border-line bg-white p-5">
               <div className="space-y-2">
-                <div className="h-4 w-1/2 rounded bg-gray-200" />
-                <div className="h-3 w-3/4 rounded bg-gray-200" />
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-3 w-3/4" />
               </div>
             </div>
           ))}

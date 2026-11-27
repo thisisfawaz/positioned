@@ -345,9 +345,12 @@ html.dark .bg-gray-200 {
   background-color: #0c1014;
 }
 
-/* Inline skeletons and avatar placeholders use bg-gray-200 directly rather
-   than the Skeleton primitive. This keeps them from glowing in dark mode. */
-html.dark .animate-pulse.bg-gray-200 {
+/* Legacy inline skeletons used animate-pulse.bg-gray-200. They have been
+   converted to <Skeleton> (which uses .skeleton-breathe + bg-surface-sunken),
+   but the rule stays as a safety net for any leftover raw placeholders and
+   avatar fallbacks painted with bg-gray-200 in dark mode. */
+html.dark .animate-pulse.bg-gray-200,
+html.dark .bg-gray-200 {
   background-color: #0c1014;
 }
 
@@ -421,4 +424,53 @@ input[type='number']::-webkit-outer-spin-button {
 input[type='number'] {
   -moz-appearance: textfield;
   appearance: textfield;
+}
+
+/* ------------------------------------------------------------------ */
+/* Skeleton breathing                                                  */
+/* ------------------------------------------------------------------ */
+/* Tailwind's animate-pulse is LINEAR over 2s - it reads as a dull throb,
+   not a breath. This eases in and out at the extremes over 1.4s, which is
+   the calm "about to show something" feel. Every Skeleton shares the same
+   timing so the whole screen breathes as one, not as scattered blinks. */
+@keyframes skeleton-breathe {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.skeleton-breathe {
+  animation: skeleton-breathe 1.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  will-change: opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-breathe {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* Skeleton -> real content: a short fade so the swap does not snap. */
+@keyframes content-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.content-fade-in {
+  animation: content-fade-in 180ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .content-fade-in {
+    animation: none;
+  }
 }

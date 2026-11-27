@@ -1,7 +1,7 @@
 export function Skeleton({ className = '' }: { className?: string }) {
   return (
     <div
-      className={`animate-pulse rounded bg-surface-sunken ${className}`}
+      className={`skeleton-breathe rounded bg-surface-sunken ${className}`}
       aria-hidden="true"
     />
   )
