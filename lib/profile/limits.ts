@@ -10,3 +10,22 @@
  */
 export const BIO_MAX = 60
 export const ABOUT_MAX = 1000
+
+/** Username rules: 1-15 chars, only letters, digits and underscore. */
+export const USERNAME_MAX = 15
+export const USERNAME_PATTERN = /^[A-Za-z0-9_]*$/
+
+/** Display name limit (includes spaces). */
+export const NAME_MAX = 24
+
+/** Returns an error message for an invalid username, or null when valid. */
+export function usernameError(raw: string): string | null {
+  const value = raw.replace(/^@/, '')
+  if (value.length > USERNAME_MAX) {
+    return `Username must be ${USERNAME_MAX} characters or fewer.`
+  }
+  if (!USERNAME_PATTERN.test(value)) {
+    return 'Username can only use letters, numbers and underscores.'
+  }
+  return null
+}

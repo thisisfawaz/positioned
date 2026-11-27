@@ -170,8 +170,12 @@ model ProfessionalProfile {
   profilePhoto    String?
   availability    AvailabilityStatus @default(OPEN_TO_WORK)
   opportunityPreferences String?
+  portfolioUrl    String?
   linkedinUrl     String?
   twitterUrl      String?
+  instagramUrl    String?
+  behanceUrl      String?
+  dribbbleUrl     String?
   githubUrl       String?
   websiteUrl      String?
   contactEmail    String?
@@ -379,6 +383,8 @@ model RecruiterProfile {
   location        String?
   profilePhoto    String?
   hiringInterests String?
+  website         String?
+  contactEmail    String?
   recruitingStatus RecruitingStatus @default(CURRENTLY_RECRUITING)
   isVerified      Boolean  @default(false)
   experiences     Experience[]

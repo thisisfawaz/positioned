@@ -37,9 +37,12 @@ export function FollowPostsButton({
     }
   }
 
+  // Fixed width for the pill so 'Add to list' and 'Unlist' occupy the same
+  // space (the shorter label used to shrink the button). 'Add to list' is the
+  // wider label, so its rendered width is the floor; text is centred.
   const sizing =
     size === 'pill'
-      ? 'px-2.5 py-1 text-[12px] leading-tight'
+      ? 'inline-flex w-[78px] items-center justify-center px-2.5 py-1 text-[12px] leading-tight'
       : 'px-5 py-2 text-sm'
 
   return (
@@ -50,7 +53,7 @@ export function FollowPostsButton({
       aria-pressed={following}
       className={`rounded-md font-semibold transition-colors disabled:cursor-default ${sizing} ${
         following
-          ? 'bg-brand-light text-ink hover:bg-brand/20'
+          ? 'border border-white bg-transparent text-white hover:bg-white/10'
           : 'bg-brand text-white hover:bg-brand-dark disabled:opacity-60'
       }`}
     >

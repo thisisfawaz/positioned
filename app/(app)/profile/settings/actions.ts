@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { prisma } from '@/lib/db'
-import { BIO_MAX, ABOUT_MAX } from '@/lib/profile/limits'
+import { BIO_MAX, ABOUT_MAX, NAME_MAX, USERNAME_MAX, usernameError } from '@/lib/profile/limits'
 
 export type ProfileFormState = {
   ok?: boolean
@@ -90,8 +90,12 @@ export async function updateProfessionalProfile(
   const country = String(formData.get('country') || '').trim()
   const availabilityRaw = String(formData.get('availability') || 'OPEN_TO_WORK')
   const skillsRaw = String(formData.get('skills') || '')
+  const portfolioUrl = normalizeUrl(String(formData.get('portfolioUrl') || ''))
   const linkedinUrl = normalizeUrl(String(formData.get('linkedinUrl') || ''))
   const twitterUrl = normalizeUrl(String(formData.get('twitterUrl') || ''))
+  const instagramUrl = normalizeUrl(String(formData.get('instagramUrl') || ''))
+  const behanceUrl = normalizeUrl(String(formData.get('behanceUrl') || ''))
+  const dribbbleUrl = normalizeUrl(String(formData.get('dribbbleUrl') || ''))
   const githubUrl = normalizeUrl(String(formData.get('githubUrl') || ''))
   const websiteUrl = normalizeUrl(String(formData.get('websiteUrl') || ''))
   const contactEmail = String(formData.get('contactEmail') || '').trim()
@@ -105,6 +109,13 @@ export async function updateProfessionalProfile(
   if (!name) {
     return { error: 'Name is required.' }
   }
+  if (name.length > NAME_MAX) {
+    return { error: `Name must be ${NAME_MAX} characters or fewer.` }
+  }
+  const unameErr = usernameError(usernameRaw)
+  if (unameErr) {
+    return { error: unameErr }
+  }
 
   // Length limits are ALSO enforced here, not just in the form: a crafted
   // request could skip maxLength, so the DB must never take an overlong value.
@@ -116,7 +127,7 @@ export async function updateProfessionalProfile(
   }
 
   // At least one social link is mandatory
-  if (!linkedinUrl && !twitterUrl && !githubUrl && !websiteUrl) {
+  if (!linkedinUrl && !twitterUrl && !instagramUrl && !behanceUrl && !dribbbleUrl && !githubUrl && !websiteUrl) {
     return {
       error:
         'At least one social link is required (LinkedIn, X/Twitter, GitHub, or website). This helps recruiters reach you.',
@@ -143,8 +154,12 @@ export async function updateProfessionalProfile(
           location: location || null,
           country: country || null,
           availability: availabilityRaw as any,
+          portfolioUrl: portfolioUrl || null,
           linkedinUrl: linkedinUrl || null,
           twitterUrl: twitterUrl || null,
+          instagramUrl: instagramUrl || null,
+          behanceUrl: behanceUrl || null,
+          dribbbleUrl: dribbbleUrl || null,
           githubUrl: githubUrl || null,
           websiteUrl: websiteUrl || null,
           contactEmail: contactEmail || null,
@@ -221,6 +236,8 @@ export async function updateRecruiterProfile(
   const bio = String(formData.get('bio') || '').trim()
   const location = String(formData.get('location') || '').trim()
   const hiringInterests = String(formData.get('hiringInterests') || '').trim()
+  const website = normalizeUrl(String(formData.get('website') || ''))
+  const contactEmail = String(formData.get('contactEmail') || '').trim()
   // Only accept a value this app produced: a LOCAL `/uploads/<file>` path OR
   // a Cloudinary secure_url. See normalizeStoredPhoto.
   const photoRaw = String(formData.get('profilePhoto') || '').trim()
@@ -232,6 +249,13 @@ export async function updateRecruiterProfile(
 
   if (!name) {
     return { error: 'Name is required.' }
+  }
+  if (name.length > NAME_MAX) {
+    return { error: `Name must be ${NAME_MAX} characters or fewer.` }
+  }
+  const unameErr = usernameError(usernameRaw)
+  if (unameErr) {
+    return { error: unameErr }
   }
 
   if (bio.length > ABOUT_MAX) {
@@ -251,6 +275,8 @@ export async function updateRecruiterProfile(
           bio: bio || null,
           location: location || null,
           hiringInterests: hiringInterests || null,
+          website: website || null,
+          contactEmail: contactEmail || null,
           recruitingStatus: recruitingStatus as any,
           profilePhoto,
         },

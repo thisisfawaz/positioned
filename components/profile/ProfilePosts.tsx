@@ -31,18 +31,24 @@ export function ProfilePosts({
   posts,
   experiences,
   about,
+  links = [],
   handle,
   isOwn,
   isRecruiter,
   roles,
+  contactEmail,
+  contactName,
 }: {
   posts: Post[]
   experiences?: any[] | null
   about?: string | null
+  links?: { label: string; url: string }[]
   handle: string
   isOwn: boolean
   isRecruiter: boolean
   roles: any[]
+  contactEmail?: string | null
+  contactName?: string | null
 }) {
   const STORE_KEY = `profile:${handle}`
 
@@ -50,7 +56,7 @@ export function ProfilePosts({
   // enough for the browser's scroll restoration to land in the right place.
   // Without this, coming back from a post resets to 9 tiles, the page is short,
   // and the restored scroll offset is clamped to the bottom of a shorter page.
-  const [tab, setTab] = useState<'published' | 'about' | 'experience'>(() => {
+  const [tab, setTab] = useState<'published' | 'about' | 'experience' | 'links' | 'contact'>(() => {
     if (typeof window === 'undefined') return 'published'
     try {
       const saved = JSON.parse(sessionStorage.getItem(STORE_KEY) || '{}')
@@ -58,7 +64,11 @@ export function ProfilePosts({
         ? 'experience'
         : saved.tab === 'about'
           ? 'about'
-          : 'published'
+          : saved.tab === 'links'
+            ? 'links'
+            : saved.tab === 'contact'
+              ? 'contact'
+              : 'published'
     } catch {
       return 'published'
     }
@@ -215,9 +225,59 @@ export function ProfilePosts({
             <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-brand" />
           )}
         </button>
+        <button type="button" onClick={() => setTab('links')} className={tabClass(tab === 'links')}>
+          Links
+          {tab === 'links' && (
+            <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-brand" />
+          )}
+        </button>
+        <button type="button" onClick={() => setTab('contact')} className={tabClass(tab === 'contact')}>
+          Contact
+          {tab === 'contact' && (
+            <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-brand" />
+          )}
+        </button>
       </div>
 
-      {tab === 'about' ? (
+      {tab === 'contact' ? (
+        contactEmail ? (
+          <div className="px-4 py-6">
+            <p className="text-[13px] text-ink-subtle">Get in touch with {contactName || 'this person'}.</p>
+            <a
+              href={`mailto:${contactEmail}`}
+              className="mt-3 inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2 text-[14px] font-semibold text-white transition-colors hover:bg-brand-dark"
+            >
+              {contactEmail}
+            </a>
+          </div>
+        ) : (
+          <div className="px-6 py-16 text-center text-[14px] text-ink-subtle">
+            No contact email added yet.
+          </div>
+        )
+      ) : tab === 'links' ? (
+        links.length > 0 ? (
+          <ul className="divide-y divide-line">
+            {links.map((l) => (
+              <li key={l.label}>
+                <a
+                  href={l.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between px-4 py-3 text-[14px] font-semibold text-ink hover:bg-surface-sunken"
+                >
+                  {l.label}
+                  <span className="text-ink-subtle">↗</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="px-6 py-16 text-center text-[14px] text-ink-subtle">
+            No links added yet.
+          </div>
+        )
+      ) : tab === 'about' ? (
         about ? (
           <div className="px-4 py-4">
             <AboutSection text={about} />

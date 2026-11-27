@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ConfirmDiscard } from '@/components/ui/ConfirmDiscard'
 
 /**
@@ -46,6 +47,13 @@ export function Modal({
 }) {
   const panelRef = useRef<HTMLDivElement>(null)
   const lastFocused = useRef<HTMLElement | null>(null)
+
+  // Portal target is only available on the client. `mounted` lets us render
+  // nothing during SSR/first paint, then portal into <body> so the overlay is
+  // never trapped inside an ancestor stacking context (e.g. the profile card)
+  // and always sits above the fixed bottom nav / mobile drawer.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
 
   // onClose is usually an inline function, so its identity changes on every
   // parent render. Reading it through a ref keeps the effect below keyed on
@@ -109,11 +117,11 @@ export function Modal({
     }
   }, [open])
 
-  if (!open) return null
+  if (!open || !mounted) return null
 
-  return (
+  return createPortal(
     <div
-      className={`modal-overlay scroll-hidden fixed inset-0 z-50 flex justify-center bg-ink/30 backdrop-blur-sm ${
+      className={`modal-overlay scroll-hidden fixed inset-0 z-[100] flex justify-center bg-ink/30 backdrop-blur-sm ${
         fullScreenOnMobile
           ? 'items-stretch overflow-hidden p-0 sm:items-start sm:overflow-y-auto sm:py-10 sm:px-4'
           : 'items-start overflow-y-auto py-10 px-4'
@@ -149,7 +157,7 @@ export function Modal({
         <div
           className={
             fullScreenOnMobile
-              ? 'scroll-hidden flex min-h-0 flex-1 flex-col overflow-y-auto p-4 sm:block sm:min-h-0 sm:p-6'
+              ? 'scroll-hidden min-h-0 flex-1 overflow-y-auto p-4 pb-[calc(var(--bottombar-h)+1rem)] sm:block sm:min-h-0 sm:p-6'
               : 'p-6'
           }
         >
@@ -166,6 +174,7 @@ export function Modal({
           onCloseRef.current()
         }}
       />
-    </div>
+    </div>,
+    document.body
   )
 }

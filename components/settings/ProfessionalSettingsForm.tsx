@@ -7,7 +7,13 @@ import { ExperienceFields, type ExperienceEntry } from '@/components/settings/Ex
 import { CharCounter } from '@/components/settings/CharCounter'
 import { ProfilePhotoPicker } from '@/components/settings/ProfilePhotoPicker'
 import { useFormDirty } from '@/lib/client/use-form-dirty'
-import { BIO_MAX, ABOUT_MAX } from '@/lib/profile/limits'
+import {
+  BIO_MAX,
+  ABOUT_MAX,
+  NAME_MAX,
+  USERNAME_MAX,
+  usernameError,
+} from '@/lib/profile/limits'
 
 type Props = {
   username: string
@@ -18,8 +24,12 @@ type Props = {
   country: string
   availability: string
   skills: string[]
+  portfolioUrl: string
   linkedinUrl: string
   twitterUrl: string
+  instagramUrl: string
+  behanceUrl: string
+  dribbbleUrl: string
   githubUrl: string
   websiteUrl: string
   contactEmail: string
@@ -48,6 +58,8 @@ export function ProfessionalSettingsForm(props: Props) {
 
   const [editingUsername, setEditingUsername] = useState(false)
   const [usernameValue, setUsernameValue] = useState(props.username)
+  const [nameValue, setNameValue] = useState(props.name ?? '')
+  const usernameErr = usernameError(usernameValue)
   // Bio/About are capped, so track their length for the counter. `title` is the
   // BIO field and `bio` is the ABOUT field (labels were swapped long ago).
   const [bioValue, setBioValue] = useState(props.title ?? '')
@@ -61,6 +73,10 @@ export function ProfessionalSettingsForm(props: Props) {
   useEffect(() => {
     setUsernameValue(props.username)
   }, [props.username])
+
+  useEffect(() => {
+    setNameValue(props.name ?? '')
+  }, [props.name])
 
   useEffect(() => {
     if (state?.ok) {
@@ -96,7 +112,17 @@ export function ProfessionalSettingsForm(props: Props) {
 
       <div>
         <label htmlFor="name" className="block text-sm font-medium mb-1">Full Name</label>
-        <input id="name" name="name" type="text" defaultValue={props.name} required className={inputClass} />
+        <input
+          id="name"
+          name="name"
+          type="text"
+          value={nameValue}
+          onChange={(e) => setNameValue(e.target.value)}
+          maxLength={NAME_MAX}
+          required
+          className={inputClass}
+        />
+        <CharCounter length={nameValue.length} max={NAME_MAX} />
       </div>
 
       <div>
@@ -122,11 +148,20 @@ export function ProfessionalSettingsForm(props: Props) {
             onChange={(e) => setUsernameValue(e.target.value)}
             placeholder="yourhandle"
             readOnly={!editingUsername}
+            maxLength={USERNAME_MAX}
             className={`${inputClass} pl-8 ${
               editingUsername ? '' : 'bg-surface-sunken text-ink-subtle cursor-pointer'
             }`}
           />
         </div>
+        {editingUsername && (
+          <>
+            {usernameErr && (
+              <p className="mt-1 text-[12px] text-rose-600">{usernameErr}</p>
+            )}
+            <CharCounter length={usernameValue.replace(/^@/, '').length} max={USERNAME_MAX} />
+          </>
+        )}
       </div>
 
       <div>
@@ -190,6 +225,17 @@ export function ProfessionalSettingsForm(props: Props) {
       </div>
 
       <div className="border-t border-line pt-6">
+        <h3 className="text-sm font-semibold mb-1">Portfolio</h3>
+        <p className="text-xs text-gray-500 mb-4">
+          A link to your portfolio. Once added it appears as a button on your profile.
+        </p>
+        <div>
+          <label htmlFor="portfolioUrl" className="block text-sm font-medium mb-1">Portfolio link</label>
+          <input id="portfolioUrl" name="portfolioUrl" type="text" defaultValue={props.portfolioUrl} placeholder="yourportfolio.com" className={inputClass} />
+        </div>
+      </div>
+
+      <div className="border-t border-line pt-6">
         <h3 className="text-sm font-semibold mb-1">Social Links</h3>
         <p className="text-xs text-gray-500 mb-4">
           At least one social link is required. These help recruiters reach you.
@@ -202,6 +248,18 @@ export function ProfessionalSettingsForm(props: Props) {
           <div>
             <label htmlFor="twitterUrl" className="block text-sm font-medium mb-1">X / Twitter</label>
             <input id="twitterUrl" name="twitterUrl" type="text" defaultValue={props.twitterUrl} placeholder="x.com/yourname" className={inputClass} />
+          </div>
+          <div>
+            <label htmlFor="instagramUrl" className="block text-sm font-medium mb-1">Instagram</label>
+            <input id="instagramUrl" name="instagramUrl" type="text" defaultValue={props.instagramUrl} placeholder="instagram.com/yourname" className={inputClass} />
+          </div>
+          <div>
+            <label htmlFor="behanceUrl" className="block text-sm font-medium mb-1">Behance</label>
+            <input id="behanceUrl" name="behanceUrl" type="text" defaultValue={props.behanceUrl} placeholder="behance.net/yourname" className={inputClass} />
+          </div>
+          <div>
+            <label htmlFor="dribbbleUrl" className="block text-sm font-medium mb-1">Dribbble</label>
+            <input id="dribbbleUrl" name="dribbbleUrl" type="text" defaultValue={props.dribbbleUrl} placeholder="dribbble.com/yourname" className={inputClass} />
           </div>
           <div>
             <label htmlFor="githubUrl" className="block text-sm font-medium mb-1">GitHub</label>

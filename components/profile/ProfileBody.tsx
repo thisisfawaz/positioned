@@ -62,13 +62,18 @@ export function ProfileBody({
           {/* Name, username, then the BIO. NOTE: the field labelled "Bio" in
               the edit form is stored as `title`; the field labelled "About" is
               stored as `bio`. So the bio here is `title`. */}
-          <div className="min-w-0">
+          <div className="flex min-w-0 flex-col gap-2">
             <h1 className="text-[19px] font-bold leading-tight text-ink">{displayName}</h1>
-            {user.username && (
-              <p className="text-[13px] text-ink-subtle">@{user.username}</p>
-            )}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              {user.username && (
+                <p className="text-[13px] text-ink-subtle">@{user.username}</p>
+              )}
+              {!isOwn && canFollow && (
+                <FollowPostsButton userId={user.id} initialFollowing={onList} size="pill" />
+              )}
+            </div>
             {prof?.title && (
-              <p className="mt-1 text-[14px] font-medium text-ink">{prof.title}</p>
+              <p className="text-[14px] font-medium text-ink">{prof.title}</p>
             )}
           </div>
         </div>
@@ -79,17 +84,6 @@ export function ProfileBody({
           {recruiter?.organization && (
             <p className="text-[14px] font-medium text-ink">{recruiter.organization}</p>
           )}
-          {recruiter && (
-            <span
-              className={`mt-1 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[12px] font-medium ${
-                recruiter.recruitingStatus === 'NOT_RECRUITING'
-                  ? 'bg-surface-sunken text-ink-subtle'
-                  : 'bg-emerald-50 text-emerald-600'
-              }`}
-            >
-              {recruitingLabel(recruiter.recruitingStatus)?.toLowerCase()}
-            </span>
-          )}
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -97,12 +91,54 @@ export function ProfileBody({
             <>
               <EditProfileButton className="rounded-lg border border-line bg-white px-3 py-1.5 text-[13px] font-semibold text-ink transition-colors hover:bg-surface-sunken sm:rounded-xl sm:px-4 sm:py-2 sm:text-[14px]" />
               <ShareProfileButton handle={handle} />
+              {recruiter?.website && (
+                <a
+                  href={recruiter.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex flex-1 items-center justify-center rounded-lg border border-line bg-[#ffffff] px-3 py-1.5 text-[13px] font-semibold text-[#111827] transition-colors hover:bg-[#ffffff] dark:border-white dark:bg-[#ffffff] dark:text-[#111827] dark:hover:bg-[#ffffff] sm:flex-none sm:rounded-xl sm:px-4 sm:py-2 sm:text-[14px]"
+                >
+                  View website
+                </a>
+              )}
+              {/* Own profile: Portfolio is the THIRD button, after Edit + Share. */}
+              {prof?.portfolioUrl && (
+                <a
+                  href={prof.portfolioUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex flex-1 items-center justify-center rounded-lg border border-line bg-[#ffffff] px-3 py-1.5 text-[13px] font-semibold text-[#111827] transition-colors hover:bg-[#ffffff] dark:border-white dark:bg-[#ffffff] dark:text-[#111827] dark:hover:bg-[#ffffff] sm:flex-none sm:rounded-xl sm:px-4 sm:py-2 sm:text-[14px]"
+                >
+                  View portfolio
+                </a>
+              )}
             </>
           ) : (
             <>
               <ContactButton toUserId={user.id} toName={user.name} label="Message" shape="profile" premiumBlocked={viewerPremiumBlocked} />
-              {canFollow && (
-                <FollowPostsButton userId={user.id} initialFollowing={onList} />
+              <ShareProfileButton handle={handle} />
+              {/* Recruiter website is an optional extra button, mirroring the
+                  professional portfolio button. */}
+              {recruiter?.website && (
+                <a
+                  href={recruiter.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex flex-1 items-center justify-center rounded-lg border border-line bg-[#ffffff] px-3 py-1.5 text-[13px] font-semibold text-[#111827] transition-colors hover:bg-[#ffffff] dark:border-white dark:bg-[#ffffff] dark:text-[#111827] dark:hover:bg-[#ffffff] sm:flex-none sm:rounded-xl sm:px-4 sm:py-2 sm:text-[14px]"
+                >
+                  View website
+                </a>
+              )}
+              {/* Portfolio comes AFTER Share. */}
+              {prof?.portfolioUrl && (
+                <a
+                  href={prof.portfolioUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex flex-1 items-center justify-center rounded-lg border border-line bg-[#ffffff] px-3 py-1.5 text-[13px] font-semibold text-[#111827] transition-colors hover:bg-[#ffffff] dark:border-white dark:bg-[#ffffff] dark:text-[#111827] dark:hover:bg-[#ffffff] sm:flex-none sm:rounded-xl sm:px-4 sm:py-2 sm:text-[14px]"
+                >
+                  View portfolio
+                </a>
               )}
             </>
           )}
@@ -116,6 +152,17 @@ export function ProfileBody({
               <strong className="text-ink">{posts.length}</strong>{' '}
               {posts.length === 1 ? 'Post' : 'Posts'}
             </span>
+            {recruiter && (
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[12px] font-medium ${
+                  recruiter.recruitingStatus === 'NOT_RECRUITING'
+                    ? 'bg-surface-sunken text-ink-subtle'
+                    : 'bg-emerald-50 text-emerald-600'
+                }`}
+              >
+                {recruitingLabel(recruiter.recruitingStatus)?.toLowerCase()}
+              </span>
+            )}
             {prof?.availability && (
               <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-emerald-600">
                 {prof.availability.replace(/_/g, ' ').toLowerCase()}
@@ -142,12 +189,24 @@ export function ProfileBody({
           The old single-item block and the "All posts" link are gone. */}
       <ProfilePosts
         posts={posts as any}
+        links={[
+          prof?.portfolioUrl && { label: 'Portfolio', url: prof.portfolioUrl },
+          prof?.linkedinUrl && { label: 'LinkedIn', url: prof.linkedinUrl },
+          prof?.twitterUrl && { label: 'X / Twitter', url: prof.twitterUrl },
+          prof?.instagramUrl && { label: 'Instagram', url: prof.instagramUrl },
+          prof?.behanceUrl && { label: 'Behance', url: prof.behanceUrl },
+          prof?.dribbbleUrl && { label: 'Dribbble', url: prof.dribbbleUrl },
+          prof?.githubUrl && { label: 'GitHub', url: prof.githubUrl },
+          prof?.websiteUrl && { label: 'Website', url: prof.websiteUrl },
+        ].filter(Boolean) as { label: string; url: string }[]}
         experiences={isRecruiter ? recruiter?.experiences : prof?.experiences}
         about={prof?.bio || recruiter?.bio || null}
         handle={handle}
         isOwn={isOwn}
         isRecruiter={isRecruiter}
         roles={roles}
+        contactEmail={prof?.contactEmail || recruiter?.contactEmail || null}
+        contactName={user.name}
       />
 
     </div>

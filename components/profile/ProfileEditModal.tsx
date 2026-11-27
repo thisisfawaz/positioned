@@ -62,8 +62,12 @@ export function ProfileEditModal({
           country={user.professionalProfile.country || ''}
           availability={user.professionalProfile.availability}
           skills={(user.professionalProfile.skills || []).map((s: any) => s.skill.name)}
+          portfolioUrl={user.professionalProfile.portfolioUrl || ''}
           linkedinUrl={user.professionalProfile.linkedinUrl || ''}
           twitterUrl={user.professionalProfile.twitterUrl || ''}
+          instagramUrl={user.professionalProfile.instagramUrl || ''}
+          behanceUrl={user.professionalProfile.behanceUrl || ''}
+          dribbbleUrl={user.professionalProfile.dribbbleUrl || ''}
           githubUrl={user.professionalProfile.githubUrl || ''}
           websiteUrl={user.professionalProfile.websiteUrl || ''}
           contactEmail={user.professionalProfile.contactEmail || ''}
@@ -93,6 +97,8 @@ export function ProfileEditModal({
           bio={user.recruiterProfile.bio || ''}
           location={user.recruiterProfile.location || ''}
           hiringInterests={user.recruiterProfile.hiringInterests || ''}
+          website={user.recruiterProfile.website || ''}
+          contactEmail={user.recruiterProfile.contactEmail || ''}
           recruitingStatus={user.recruiterProfile.recruitingStatus || 'CURRENTLY_RECRUITING'}
           profilePhoto={user.recruiterProfile.profilePhoto ?? null}
           onDirtyChange={setDirty}

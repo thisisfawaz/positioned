@@ -7,7 +7,7 @@ import { ExperienceFields, type ExperienceEntry } from '@/components/settings/Ex
 import { CharCounter } from '@/components/settings/CharCounter'
 import { ProfilePhotoPicker } from '@/components/settings/ProfilePhotoPicker'
 import { useFormDirty } from '@/lib/client/use-form-dirty'
-import { ABOUT_MAX } from '@/lib/profile/limits'
+import { ABOUT_MAX, NAME_MAX, USERNAME_MAX, usernameError } from '@/lib/profile/limits'
 
 type Props = {
   username: string
@@ -16,6 +16,8 @@ type Props = {
   bio: string
   location: string
   hiringInterests: string
+  website: string
+  contactEmail: string
   recruitingStatus: string
   experiences: ExperienceEntry[]
   profilePhoto?: string | null
@@ -38,12 +40,18 @@ export function RecruiterSettingsForm(props: Props) {
 
   const [editingUsername, setEditingUsername] = useState(false)
   const [usernameValue, setUsernameValue] = useState(props.username)
+  const [nameValue, setNameValue] = useState(props.name ?? '')
+  const usernameErr = usernameError(usernameValue)
   // About is capped - track its length for the counter.
   const [aboutValue, setAboutValue] = useState(props.bio ?? '')
 
   useEffect(() => {
     setUsernameValue(props.username)
   }, [props.username])
+
+  useEffect(() => {
+    setNameValue(props.name ?? '')
+  }, [props.name])
 
   useEffect(() => {
     setAboutValue(props.bio ?? '')
@@ -80,7 +88,17 @@ export function RecruiterSettingsForm(props: Props) {
 
       <div>
         <label htmlFor="name" className="block text-sm font-medium mb-1">Full Name</label>
-        <input id="name" name="name" type="text" defaultValue={props.name} required className={inputClass} />
+        <input
+          id="name"
+          name="name"
+          type="text"
+          value={nameValue}
+          onChange={(e) => setNameValue(e.target.value)}
+          maxLength={NAME_MAX}
+          required
+          className={inputClass}
+        />
+        <CharCounter length={nameValue.length} max={NAME_MAX} />
       </div>
 
       <div>
@@ -106,11 +124,20 @@ export function RecruiterSettingsForm(props: Props) {
             onChange={(e) => setUsernameValue(e.target.value)}
             placeholder="yourhandle"
             readOnly={!editingUsername}
+            maxLength={USERNAME_MAX}
             className={`${inputClass} pl-8 ${
               editingUsername ? '' : 'bg-surface-sunken text-ink-subtle cursor-pointer'
             }`}
           />
         </div>
+        {editingUsername && (
+          <>
+            {usernameErr && (
+              <p className="mt-1 text-[12px] text-rose-600">{usernameErr}</p>
+            )}
+            <CharCounter length={usernameValue.replace(/^@/, '').length} max={USERNAME_MAX} />
+          </>
+        )}
       </div>
 
       <div>
@@ -145,6 +172,22 @@ export function RecruiterSettingsForm(props: Props) {
         <input id="location" name="location" type="text" defaultValue={props.location}
           placeholder="e.g. Lagos, Nigeria"
           className={inputClass} />
+      </div>
+
+      <div>
+        <label htmlFor="website" className="block text-sm font-medium mb-1">Website (optional)</label>
+        <input id="website" name="website" type="text" defaultValue={props.website} placeholder="yourcompany.com" className={inputClass} />
+        <p className="text-xs text-gray-500 mt-1">
+          A link to your website. Once added it appears as a button on your profile.
+        </p>
+      </div>
+
+      <div>
+        <label htmlFor="contactEmail" className="block text-sm font-medium mb-1">Contact Email (optional)</label>
+        <input id="contactEmail" name="contactEmail" type="email" defaultValue={props.contactEmail} placeholder="hiring@example.com" className={inputClass} />
+        <p className="text-xs text-gray-500 mt-1">
+          Shown in your profile Contact tab so people can reach you.
+        </p>
       </div>
 
       <div>
