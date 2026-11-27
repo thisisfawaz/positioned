@@ -78,10 +78,13 @@ export default function ExplorePage() {
 
   const items = data?.items ?? []
   const cursor = data?.nextCursor ?? null
-  // Treat "no data yet" as loading. Without this, an undefined result (still
-  // fetching, or the key just changed) rendered as the EMPTY state, because
-  // `items.length === 0` was true and `isLoading` was already false.
-  const showLoading = !data && !error
+  // Skeleton while there is NOTHING to show yet and no error. Driven by the
+  // actual item count, NOT by `!data`: the global SWR config sets
+  // keepPreviousData, so `data` can be a non-undefined shell on first render,
+  // which made `!data` false and skipped the skeleton - the grid then rendered
+  // empty (the "header shows, posts area blank" bug). Keying off items.length
+  // is immune to whatever shape `data` arrives in.
+  const showLoading = items.length === 0 && !error
 
   const activeCount =
     (sort !== DEFAULT_SORT ? 1 : 0) + (media !== DEFAULT_MEDIA ? 1 : 0)
@@ -130,13 +133,21 @@ export default function ExplorePage() {
       <div className="mt-4 px-3 sm:px-4">
         {showLoading ? (
           <div className="columns-2 gap-3 sm:columns-3 lg:columns-4">
-            {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
+            {Array.from({ length: 12 }).map((_, i) => {
               const tall = i % 5 === 0 || i % 7 === 0
               return (
-                <div key={i} className="mb-3 break-inside-avoid overflow-hidden rounded-xl">
+                <div
+                  key={i}
+                  className="relative mb-3 break-inside-avoid overflow-hidden rounded-xl"
+                >
                   <Skeleton
                     className={`w-full rounded-xl ${tall ? 'aspect-[3/4]' : 'aspect-square'}`}
                   />
+                  {/* Stand-in for the real tile's bottom name/title overlay. */}
+                  <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-2.5">
+                    <Skeleton className="h-[11px] w-2/3 rounded" />
+                    <Skeleton className="h-[9px] w-1/2 rounded" />
+                  </div>
                 </div>
               )
             })}
