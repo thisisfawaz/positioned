@@ -14,3 +14,5 @@
 export default function AppLoading() {
   return null
 }
+
+// deploy-trigger: no-op bump to re-fire the hosting integration
