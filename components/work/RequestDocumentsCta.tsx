@@ -165,7 +165,11 @@ function SupplierSubmitForm({
   )
   const wantsCv = response === 'CV' || response === 'CV_AND_PORTFOLIO'
   const wantsPortfolio = response === 'PORTFOLIO' || response === 'CV_AND_PORTFOLIO'
-  const [notice, setNotice] = useState(true) // auto-show on open
+  // Do NOT pre-show the notice: premium status is only known to the server.
+  // The form opens normally; if the submit is rejected with `premium_required`
+  // (the effect below) the notice appears. A premium user's submit succeeds,
+  // so they never see it.
+  const [notice, setNotice] = useState(false)
 
   // Re-show whenever the server rejects for premium.
   useEffect(() => {

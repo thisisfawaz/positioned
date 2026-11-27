@@ -103,6 +103,29 @@ export function ResponsesClient({ groups }: { groups: ResponseGroup[] }) {
       >
         {open && (
           <div className="max-h-[70vh] space-y-3 overflow-y-auto pr-1">
+            {/* Jump to the post itself in the feed reel. */}
+            <Link
+              href={`/feed?post=${open.postId}`}
+              onClick={() => setOpenId(null)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-line px-3.5 py-1.5 text-[13px] font-semibold text-ink transition-colors hover:border-brand"
+            >
+              View post
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M7 17L17 7" />
+                <path d="M9 7h8v8" />
+              </svg>
+            </Link>
+
             {open.responses.map((r) => {
               const fulfilled = r.status === 'FULFILLED'
               return (

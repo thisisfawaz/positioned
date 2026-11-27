@@ -13,6 +13,9 @@
     --surface-muted: #f7f7fb;
     --surface-sunken: #f1f0f7;
     --line: #eeedf3;
+    /* Skeleton shimmer: pale gray base, near-white sweep. */
+    --shimmer-base: #e6e5ee;
+    --shimmer-highlight: #f4f3fa;
     --ink: #111827;
     --ink-muted: #374151;
     --ink-subtle: #6b7280;
@@ -62,6 +65,9 @@
     --surface-muted: #0c1014;
     --surface-sunken: #0c1014;
     --line: #2f2f2f;
+    /* Skeleton shimmer: near-black base, lighter gray sweep. */
+    --shimmer-base: #1b2026;
+    --shimmer-highlight: #2b3138;
     --ink: #f4f4f4;
     --ink-muted: #c3c3c3;
     --ink-subtle: #9a9a9a;
@@ -456,6 +462,38 @@ input[type='number'] {
 }
 
 /* Skeleton -> real content: a short fade so the swap does not snap. */
+/* Theme-aware SHIMMER for skeleton tiles: a moving lighter band sweeps
+   across a base fill. Light theme = pale gray base with a white sweep; dark
+   theme = near-black base with a lighter gray sweep. The base/sweep colours
+   come from vars set below so each theme gets the right contrast. */
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -150% 0;
+  }
+  100% {
+    background-position: 250% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background-color: var(--shimmer-base);
+  background-image: linear-gradient(
+    90deg,
+    var(--shimmer-base) 0%,
+    var(--shimmer-highlight) 50%,
+    var(--shimmer-base) 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer {
+    animation: none;
+  }
+}
+
 @keyframes content-fade-in {
   from {
     opacity: 0;

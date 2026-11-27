@@ -129,36 +129,11 @@ export default function ExplorePage() {
         </div>
       </div>
 
-      {/* Grid */}
+      {/* Grid. GRAY SQUARES are the default and show immediately; the moment
+          real items exist they are replaced by the actual grid. No loading
+          condition in between - if there is no content, you see squares. */}
       <div className="mt-4 px-3 sm:px-4">
-        {showLoading ? (
-          <div className="columns-2 gap-3 sm:columns-3 lg:columns-4">
-            {Array.from({ length: 12 }).map((_, i) => {
-              const tall = i % 5 === 0 || i % 7 === 0
-              return (
-                <div
-                  key={i}
-                  className="relative mb-3 break-inside-avoid overflow-hidden rounded-xl"
-                >
-                  <Skeleton
-                    className={`w-full rounded-xl ${tall ? 'aspect-[3/4]' : 'aspect-square'}`}
-                  />
-                  {/* Stand-in for the real tile's bottom name/title overlay. */}
-                  <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-2.5">
-                    <Skeleton className="h-[11px] w-2/3 rounded" />
-                    <Skeleton className="h-[9px] w-1/2 rounded" />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        ) : items.length === 0 ? (
-          <div className="py-16 text-center">
-            <p className="text-[14px] text-ink-subtle">
-              {debouncedQuery || activeCount > 0 ? 'No results match your filters.' : 'Nothing to show yet.'}
-            </p>
-          </div>
-        ) : (
+        {items.length > 0 ? (
           <ExploreGrid
             initialItems={items}
             initialCursor={cursor}
@@ -166,6 +141,20 @@ export default function ExplorePage() {
             sort={sort}
             media={media}
           />
+        ) : (
+          <div className="columns-2 gap-3 sm:columns-3 lg:columns-4">
+            {Array.from({ length: 12 }).map((_, i) => {
+              const tall = i % 5 === 0 || i % 7 === 0
+              return (
+                <div
+                  key={i}
+                  className={`skeleton-shimmer mb-3 break-inside-avoid rounded-xl ${
+                    tall ? 'aspect-[3/4]' : 'aspect-square'
+                  }`}
+                />
+              )
+            })}
+          </div>
         )}
       </div>
 

@@ -18,7 +18,7 @@ import {
 
 export default function HomePage() {
   const { user } = useUser()
-  const { data } = useCached<{
+  const { data, isLoading } = useCached<{
     workPosts: any[]
     recruitments?: any[]
     followingIds?: string[]
@@ -172,7 +172,7 @@ export default function HomePage() {
     />
 
     {/* The reel itself is shared with /[username]/reels - one implementation. */}
-    {!data ? (
+    {isLoading ? (
       <FeedSkeleton />
     ) : (
       <div className="content-fade-in">

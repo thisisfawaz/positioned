@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { useCached } from '@/lib/client/use-cached'
-import { Skeleton } from '@/components/ui/Skeleton'
 import { relativeTime } from '@/lib/client/social'
 
 type Notification = {
@@ -17,12 +16,38 @@ type Notification = {
 
 type ApiResponse = { notifications: Notification[]; totalUnread: number }
 
+function Sh({ className = '' }: { className?: string }) {
+  return <div className={`skeleton-shimmer ${className}`} />
+}
+
+/** Mirrors the real notification card: unread dot left, then actor/action line,
+ *  a one-line text, and a timestamp - inside a rounded-2xl p-5 card. */
+function NotificationsSkeleton() {
+  return (
+    <div className="space-y-3">
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="rounded-2xl bg-white p-5">
+          <div className="flex items-start gap-2">
+            <Sh className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <Sh className="h-4 w-2/3 rounded" />
+              <Sh className="h-3.5 w-3/4 rounded" />
+              <Sh className="h-3 w-16 rounded" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function NotificationsPage() {
-  const { data } = useCached<ApiResponse>('/api/notifications')
+  const { data, isLoading } = useCached<ApiResponse>('/api/notifications')
   const notifications = data?.notifications ?? []
 
   return (
     <div className="w-full px-3 pb-6 pt-2 sm:px-4 lg:pt-6">
+      {/* Real header, stays put during load. */}
       <div className="mb-4">
         <h1 className="text-[20px] font-bold tracking-tight text-ink sm:text-[26px]">
           Notifications
@@ -32,21 +57,17 @@ export default function NotificationsPage() {
         </p>
       </div>
 
-      {!data ? (
-        <div className="space-y-3">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="space-y-2 rounded-2xl bg-white p-5">
-              <Skeleton className="h-4 w-40" />
-              <Skeleton className="h-3 w-3/4" />
-            </div>
-          ))}
-        </div>
+      {/* Binary: loading or no data -> shimmer cards; loaded -> real list or
+          empty. Keyed on isLoading, not !data (keepPreviousData makes data
+          truthy early). */}
+      {isLoading || !data ? (
+        <NotificationsSkeleton />
       ) : notifications.length === 0 ? (
         <div className="px-6 py-16 text-center">
           <p className="text-[14px] text-ink-subtle">No notifications yet.</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="content-fade-in space-y-3">
           {notifications.map((n) => (
             <Link
               key={n.id}

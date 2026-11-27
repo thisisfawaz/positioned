@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { useCached } from '@/lib/client/use-cached'
 import { ConversationActions } from '@/components/contact/ConversationActions'
-import { Skeleton } from '@/components/ui/Skeleton'
 import { relativeTime } from '@/lib/client/social'
 
 import type { ConversationListItem } from '@/services/queries/messages'
@@ -14,16 +13,25 @@ type ApiResponse = {
 }
 
 export function MessagesList({ onOpen }: { onOpen: (id: string) => void }) {
-  const { data, error } = useCached<ApiResponse>('/api/messages')
+  const { data, error, isLoading } = useCached<ApiResponse>('/api/messages')
 
-  if (!data) {
+  if (isLoading || !data) {
+    // Mirror the real conversation row: name + time on one line, subject,
+    // preview, then the actions row. Shimmer (theme-aware), no avatar (the
+    // real rows have none).
     return (
       <div>
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="space-y-2 border-b border-line px-4 py-3">
-            <Skeleton className="h-4 w-40" />
-            <Skeleton className="h-3 w-3/4" />
-            <Skeleton className="h-3 w-full" />
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div key={i} className="border-b border-line px-4 py-3 last:border-b-0">
+            <div className="flex items-center gap-2">
+              <div className="skeleton-shimmer h-4 w-40 rounded" />
+              <div className="skeleton-shimmer h-3 w-10 rounded" />
+            </div>
+            <div className="skeleton-shimmer mt-1.5 h-3.5 w-2/3 rounded" />
+            <div className="skeleton-shimmer mt-1.5 h-3 w-3/4 rounded" />
+            <div className="mt-2 flex justify-end">
+              <div className="skeleton-shimmer h-5 w-16 rounded" />
+            </div>
           </div>
         ))}
       </div>

@@ -75,7 +75,7 @@ export default async function ResponsesPage() {
       byPost.set(r.post.id, {
         postId: r.post.id,
         postTitle: r.post.title,
-        postHref: `/work/${r.post.id}`,
+        postHref: `/feed?post=${r.post.id}`,
         postImage,
         responses: [item],
       })

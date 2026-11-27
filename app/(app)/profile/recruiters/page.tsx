@@ -6,7 +6,6 @@ import useSWR from 'swr'
 import { initialsOf } from '@/lib/client/social'
 import { SearchIcon, SlidersIcon } from '@/components/icons'
 import { recruitingLabel } from '@/lib/client/status'
-import { Skeleton } from '@/components/ui/Skeleton'
 
 type Recruiter = {
   id: string
@@ -186,11 +185,13 @@ function SkeletonList() {
     <div className="space-y-3">
       {[0, 1, 2, 3].map((i) => (
         <div key={i} className="rounded-[1.25rem] border border-line bg-white p-5">
-          <div className="flex gap-3">
-            <Skeleton className="h-12 w-12 rounded-xl" />
-            <div className="flex-1 space-y-2">
-              <Skeleton className="h-3.5 w-40" />
-              <Skeleton className="h-3 w-28" />
+          <div className="flex items-start gap-3">
+            <div className="skeleton-shimmer h-12 w-12 flex-shrink-0 rounded-xl" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="skeleton-shimmer h-4 w-44 rounded" />
+              <div className="skeleton-shimmer h-3.5 w-32 rounded" />
+              <div className="skeleton-shimmer h-3 w-24 rounded" />
+              <div className="skeleton-shimmer mt-1.5 h-3 w-3/4 rounded" />
             </div>
           </div>
         </div>

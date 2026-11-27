@@ -76,12 +76,16 @@ function Section({
 }
 
 export default function SettingsPage() {
-  const { data, mutate } = useCached<{ settings: Settings }>('/api/settings')
+  const { data, mutate, isLoading } = useCached<{ settings: Settings }>('/api/settings')
   const [editOpen, setEditOpen] = useState(false)
   const [saving, setSaving] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const settings = data?.settings
+  // Controls (toggles + theme select) shimmer until the saved values arrive.
+  // The surrounding real markup already renders immediately; only the
+  // not-yet-known control state is masked so it reads as loading, not "all off".
+  const controlsLoading = isLoading || !settings
 
   async function update(key: keyof Settings, value: boolean | ThemeMode) {
     if (!settings) return
@@ -159,11 +163,15 @@ export default function SettingsPage() {
             {NOTIFICATION_ROWS.map((row) => (
               <li key={row.key} className="flex items-center justify-between gap-4">
                 <span className="text-[14px] text-ink">{row.label}</span>
-                <Toggle
-                  checked={Boolean(settings?.[row.key])}
-                  onChange={(v) => update(row.key, v)}
-                  disabled={!settings || saving === row.key}
-                />
+                {controlsLoading ? (
+                  <div className="skeleton-shimmer h-6 w-11 flex-shrink-0 rounded-full" />
+                ) : (
+                  <Toggle
+                    checked={Boolean(settings?.[row.key])}
+                    onChange={(v) => update(row.key, v)}
+                    disabled={saving === row.key}
+                  />
+                )}
               </li>
             ))}
           </ul>
@@ -177,11 +185,15 @@ export default function SettingsPage() {
             {PRIVACY_ROWS.map((row) => (
               <li key={row.key} className="flex items-center justify-between gap-4">
                 <span className="text-[14px] text-ink">{row.label}</span>
-                <Toggle
-                  checked={Boolean(settings?.[row.key])}
-                  onChange={(v) => update(row.key, v)}
-                  disabled={!settings || saving === row.key}
-                />
+                {controlsLoading ? (
+                  <div className="skeleton-shimmer h-6 w-11 flex-shrink-0 rounded-full" />
+                ) : (
+                  <Toggle
+                    checked={Boolean(settings?.[row.key])}
+                    onChange={(v) => update(row.key, v)}
+                    disabled={saving === row.key}
+                  />
+                )}
               </li>
             ))}
           </ul>
@@ -196,11 +208,15 @@ export default function SettingsPage() {
                   Restart a video automatically when it reaches the end.
                 </p>
               </div>
-              <Toggle
-                checked={Boolean(settings?.autoplayVideo ?? true)}
-                onChange={(v) => update('autoplayVideo', v)}
-                disabled={!settings || saving === 'autoplayVideo'}
-              />
+              {controlsLoading ? (
+                <div className="skeleton-shimmer h-6 w-11 flex-shrink-0 rounded-full" />
+              ) : (
+                <Toggle
+                  checked={Boolean(settings?.autoplayVideo ?? true)}
+                  onChange={(v) => update('autoplayVideo', v)}
+                  disabled={saving === 'autoplayVideo'}
+                />
+              )}
             </li>
           </ul>
         </Section>
@@ -211,16 +227,20 @@ export default function SettingsPage() {
         >
           <div className="flex items-center justify-between gap-4">
             <span className="text-[14px] text-ink">Theme</span>
-            <select
-              value={settings?.themeMode ?? 'light'}
-              onChange={(e) => update('themeMode', e.target.value as ThemeMode)}
-              disabled={!settings || saving === 'themeMode'}
-              className="cursor-pointer rounded-lg border border-line bg-white px-3 py-1.5 text-[14px] text-ink"
-            >
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-              <option value="system">System</option>
-            </select>
+            {controlsLoading ? (
+              <div className="skeleton-shimmer h-8 w-24 rounded-lg" />
+            ) : (
+              <select
+                value={settings?.themeMode ?? 'light'}
+                onChange={(e) => update('themeMode', e.target.value as ThemeMode)}
+                disabled={saving === 'themeMode'}
+                className="cursor-pointer rounded-lg border border-line bg-white px-3 py-1.5 text-[14px] text-ink"
+              >
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+                <option value="system">System</option>
+              </select>
+            )}
           </div>
         </Section>
       </div>
