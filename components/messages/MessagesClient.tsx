@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useSWRConfig } from 'swr'
 import { MessagesList } from '@/components/messages/MessagesList'
 import { ConversationView } from '@/components/messages/ConversationView'
@@ -19,8 +20,16 @@ import { Modal } from '@/components/ui/Modal'
  * marks it read, a reply bumps the preview).
  */
 export function MessagesClient() {
-  const [openId, setOpenId] = useState<string | null>(null)
+  const searchParams = useSearchParams()
+  const initialId = searchParams?.get('c') ?? null
+  const [openId, setOpenId] = useState<string | null>(initialId)
   const { mutate } = useSWRConfig()
+
+  // Keep the open thread in sync if the ?c= param changes while mounted
+  // (e.g. the profile Message button navigating to an existing chat).
+  useEffect(() => {
+    if (initialId) setOpenId(initialId)
+  }, [initialId])
 
   useEffect(() => {
     if (openId) return

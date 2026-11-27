@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useUser } from '@/lib/client/use-user'
-import { useCached } from '@/lib/client/use-cached'
+import { useUnreadCount } from '@/lib/client/use-unread'
 import { PlusIcon, SearchIcon } from '@/components/icons'
 import { CreatePostTrigger } from '@/components/work/CreatePostTrigger'
 import { ProfileMenu } from '@/components/navigation/ProfileMenu'
@@ -23,8 +23,7 @@ export function Sidebar() {
   const role = user?.role ?? 'PROFESSIONAL'
   const isRecruiter = role === 'RECRUITER'
 
-  const { data: unread } = useCached<{ totalUnread: number }>('/api/unread')
-  const unreadCount = unread?.totalUnread ?? 0
+  const unreadCount = useUnreadCount()
 
   const profileHref = user?.username ? `/${user.username}` : '/profile'
   const subtitle = isRecruiter

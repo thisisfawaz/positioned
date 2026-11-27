@@ -13,7 +13,12 @@ type ApiResponse = {
 }
 
 export function MessagesList({ onOpen }: { onOpen: (id: string) => void }) {
-  const { data, error, isLoading } = useCached<ApiResponse>('/api/messages')
+  // Realtime mutates this key on a new inbound ContactRequest; this poll is
+  // the slow safety net for a dropped WebSocket.
+  const { data, error, isLoading } = useCached<ApiResponse>('/api/messages', {
+    refreshInterval: 60000,
+    revalidateOnFocus: true,
+  })
 
   if (isLoading || !data) {
     // Mirror the real conversation row: name + time on one line, subject,
@@ -76,7 +81,7 @@ export function MessagesList({ onOpen }: { onOpen: (id: string) => void }) {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <Link
-                      href={`/profile/professionals/${c.otherId}`}
+                      href={`/${c.otherUsername ?? c.otherId}`}
                       onClick={(e) => e.stopPropagation()}
                       className={`text-[15px] hover:underline ${
                         isUnread ? 'font-bold text-ink' : 'font-semibold text-ink'

@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { fetcher } from '@/lib/client/fetcher'
 import { seedCache } from '@/lib/client/use-cached'
 import { initialsOf } from '@/lib/client/social'
-import { useCached } from '@/lib/client/use-cached'
+import { useUnreadCount } from '@/lib/client/use-unread'
 import {
   UserIcon,
   BriefcaseIcon,
@@ -53,8 +53,7 @@ export function TopNav({ role, userName }: { role: Role; userName?: string }) {
   const [signingOut, setSigningOut] = useState(false)
   const [query, setQuery] = useState('')
 
-  const { data: unread } = useCached<{ totalUnread: number }>('/api/unread')
-  const unreadCount = unread?.totalUnread ?? 0
+  const unreadCount = useUnreadCount()
 
   const handleSignOut = async () => {
     setSigningOut(true)

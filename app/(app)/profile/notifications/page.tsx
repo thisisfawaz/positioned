@@ -42,7 +42,14 @@ function NotificationsSkeleton() {
 }
 
 export default function NotificationsPage() {
-  const { data, isLoading } = useCached<ApiResponse>('/api/notifications')
+  // Realtime mutates this key on a new inbound ContactRequest or
+  // DocumentRequest, so those appear instantly. This poll is the slow safety
+  // net - and the only automatic path for LIKE notifications, which are not
+  // subscribed (likes never set the unread badge).
+  const { data, isLoading } = useCached<ApiResponse>('/api/notifications', {
+    refreshInterval: 60000,
+    revalidateOnFocus: true,
+  })
   const notifications = data?.notifications ?? []
 
   return (

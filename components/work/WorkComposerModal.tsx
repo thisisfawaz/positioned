@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useSWRConfig } from 'swr'
 import { NewWorkForm } from '@/components/work/NewWorkForm'
 import { Modal } from '@/components/ui/Modal'
 import { clearCached } from '@/lib/client/use-cached'
@@ -13,6 +14,7 @@ export function WorkComposerModal({
   onClose: () => void
 }) {
   const [dirty, setDirty] = useState(false)
+  const { mutate } = useSWRConfig()
 
   return (
     <Modal
@@ -32,6 +34,11 @@ export function WorkComposerModal({
           // The post exists on the server now. Drop the client copy of the feed
           // so the next render refetches and the new post shows immediately.
           clearCached('/api/home')
+          // Also refresh every cached profile page (including the author's own,
+          // where the new post should appear at the top). The realtime WorkPost
+          // event would eventually do this too, but this makes the author's own
+          // profile instant and covers the case where realtime is briefly down.
+          mutate((key) => typeof key === 'string' && key.startsWith('/api/profile/'))
           onClose()
         }}
       />

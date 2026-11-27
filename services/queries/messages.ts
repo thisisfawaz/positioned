@@ -13,8 +13,8 @@ export async function getConversationsForUser(userId: string) {
       ],
     },
     include: {
-      fromUser: { select: { id: true, name: true } },
-      toUser: { select: { id: true, name: true } },
+      fromUser: { select: { id: true, name: true, username: true } },
+      toUser: { select: { id: true, name: true, username: true } },
       replies: { select: { fromUserId: true, createdAt: true } },
       _count: { select: { replies: true } },
     },
@@ -62,6 +62,7 @@ export async function getConversationsForUser(userId: string) {
       createdAt: c.createdAt.toISOString(),
       otherName: other.name,
       otherId: other.id,
+      otherUsername: other.username,
       isSender,
       replyCount: c._count.replies,
       unreadCount,

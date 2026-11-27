@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useUser } from '@/lib/client/use-user'
-import { useCached } from '@/lib/client/use-cached'
+import { useUnreadCount } from '@/lib/client/use-unread'
 import { initialsOf } from '@/lib/client/social'
 import {
   HomeIcon,
@@ -33,8 +33,7 @@ import { REEL_SCROLL_EVENT, type ReelScrollDetail } from '@/lib/client/reel-scro
 function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const pathname = usePathname()
   const { user } = useUser()
-  const { data: unread } = useCached<{ totalUnread: number }>('/api/unread')
-  const unreadCount = unread?.totalUnread ?? 0
+  const unreadCount = useUnreadCount()
 
   const profileHref = user?.username ? `/${user.username}` : '/profile'
   const subtitle = user?.recruiterProfile?.organization || user?.professionalProfile?.title || ''

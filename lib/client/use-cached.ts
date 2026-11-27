@@ -1,6 +1,6 @@
 'use client'
 
-import useSWR from 'swr'
+import useSWR, { type SWRConfiguration } from 'swr'
 
 const memoryCache: Record<string, unknown> = {}
 const listeners = new Set<() => void>()
@@ -30,9 +30,10 @@ export function clearCached(key: string) {
   emit()
 }
 
-export function useCached<T>(key: string) {
+export function useCached<T>(key: string, options?: SWRConfiguration) {
   // 1. Fetch with SWR (only actually hits the network if nothing is cached).
-  const swr = useSWR<T>(key)
+  //    Options pass through unchanged - e.g. { refreshInterval: 15000 } to poll.
+  const swr = useSWR<T>(key, options)
 
   // 2. Write any fresh data back to the module cache.
   if (swr.data !== undefined && memoryCache[key] !== swr.data) {

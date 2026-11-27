@@ -1,8 +1,14 @@
 'use client'
 
 import { useActionState, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useSWRConfig } from 'swr'
+import { useCached } from '@/lib/client/use-cached'
 import { sendContactRequest, type ContactFormState } from '@/app/(app)/profile/contact/actions'
+
+type ConversationListResponse = {
+  conversations: { id: string; otherId: string }[]
+}
 
 export function ContactButton({
   toUserId,
@@ -28,6 +34,26 @@ export function ContactButton({
     {}
   )
   const { mutate } = useSWRConfig()
+  const router = useRouter()
+  // Existing conversations (cached). If one with this user already exists, the
+  // button jumps straight into that thread instead of starting a new one.
+  const { data: convoData } = useCached<ConversationListResponse>('/api/messages')
+  const existing = convoData?.conversations?.find((c) => c.otherId === toUserId)
+
+  const handleClick = () => {
+    // Already have a conversation with this user: open it, even if a new
+    // message to them would be premium-gated - they are already in the thread.
+    if (existing) {
+      router.push(`/messages?c=${existing.id}`)
+      return
+    }
+    if (premiumBlocked) {
+      setOpen(true)
+      setNotice(true)
+      return
+    }
+    setOpen(true)
+  }
 
   useEffect(() => {
     if (state.ok) {
@@ -40,7 +66,7 @@ export function ContactButton({
     <>
       <button
         type="button"
-        onClick={() => { setOpen(true); if (premiumBlocked) setNotice(true) }}
+        onClick={handleClick}
         className={shape === 'profile' ? 'rounded-md bg-brand px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-dark' : 'btn-primary text-sm px-4 py-2'}
       >
         {label}

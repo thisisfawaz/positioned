@@ -1,5 +1,6 @@
 import { MobileBottomNav } from '@/components/navigation/MobileNav'
 import { Sidebar } from '@/components/navigation/Sidebar'
+import { RealtimeBridge } from '@/components/providers/RealtimeBridge'
 
 /**
  * App shell.
@@ -15,6 +16,9 @@ import { Sidebar } from '@/components/navigation/Sidebar'
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[var(--background)]">
+      {/* One session-wide realtime subscription. Renders nothing; mutates the
+          SWR keys for messages / unread / notifications on inbound rows. */}
+      <RealtimeBridge />
       {/* Two columns: nav rail + content. Pages control their own width. */}
       <div className="flex w-full items-start">
         <Sidebar />
