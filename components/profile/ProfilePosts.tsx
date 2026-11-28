@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ExperienceSection } from '@/components/profile/ExperienceSection'
 import { AboutSection } from '@/components/profile/AboutSection'
 import { youtubeVideoId } from '@/lib/client/youtube'
+import { ExternalLinkIcon, CopyIcon } from '@/components/icons'
 
 type Post = {
   id: string
@@ -241,15 +242,7 @@ export function ProfilePosts({
 
       {tab === 'contact' ? (
         contactEmail ? (
-          <div className="px-4 py-6">
-            <p className="text-[13px] text-ink-subtle">Get in touch with {contactName || 'this person'}.</p>
-            <a
-              href={`mailto:${contactEmail}`}
-              className="mt-3 inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2 text-[14px] font-semibold text-white transition-colors hover:bg-brand-dark"
-            >
-              {contactEmail}
-            </a>
-          </div>
+          <ContactTab email={contactEmail} name={contactName} />
         ) : (
           <div className="px-6 py-16 text-center text-[14px] text-ink-subtle">
             No contact email added yet.
@@ -267,7 +260,7 @@ export function ProfilePosts({
                   className="flex items-center justify-between px-4 py-3 text-[14px] font-semibold text-ink hover:bg-surface-sunken"
                 >
                   {l.label}
-                  <span className="text-ink-subtle">↗</span>
+                  <ExternalLinkIcon className="h-4 w-4 text-ink-subtle" />
                 </a>
               </li>
             ))}
@@ -352,6 +345,41 @@ export function ProfilePosts({
           {visible < posts.length && <div ref={sentinel} className="h-8" />}
         </>
       )}
+    </div>
+  )
+}
+
+/** Contact tab body: plain-text email with a tap-to-copy icon. */
+function ContactTab({ email, name }: { email: string; name?: string | null }) {
+  const [copied, setCopied] = useState(false)
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(email)
+    } catch {
+      // Older browsers: fall back to a prompt so the email is still copyable.
+      window.prompt('Copy this email', email)
+      return
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  return (
+    <div className="px-4 py-6">
+      <p className="text-[13px] text-ink-subtle">Get in touch with {name || 'this person'}.</p>
+      <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-line px-4 py-3">
+        <span className="min-w-0 truncate text-[14px] font-medium text-ink">{email}</span>
+        <button
+          type="button"
+          onClick={copy}
+          aria-label={copied ? 'Copied' : 'Copy email'}
+          className="flex shrink-0 items-center gap-1.5 text-ink-subtle transition-colors hover:text-ink"
+        >
+          <CopyIcon className="h-4 w-4" />
+          {copied && <span className="text-[12px] font-medium">Copied</span>}
+        </button>
+      </div>
     </div>
   )
 }

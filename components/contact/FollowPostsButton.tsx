@@ -42,7 +42,7 @@ export function FollowPostsButton({
   // wider label, so its rendered width is the floor; text is centred.
   const sizing =
     size === 'pill'
-      ? 'inline-flex w-[78px] items-center justify-center px-2.5 py-1 text-[12px] leading-tight'
+      ? 'inline-flex w-auto whitespace-nowrap items-center justify-center px-2.5 py-1 text-[12px] leading-tight'
       : 'px-5 py-2 text-sm'
 
   return (

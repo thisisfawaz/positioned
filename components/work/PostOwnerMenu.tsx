@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { Modal } from '@/components/ui/Modal'
 import { updatePostText, deleteWorkPost } from '@/app/(app)/profile/work/actions'
+import { BoostPostMenuItem } from '@/components/work/BoostPostMenuItem'
 
 type AspectRatio = '9:16' | '16:9'
 
@@ -36,7 +37,15 @@ export function PostOwnerMenu({
   const [pending, start] = useTransition()
   const router = useRouter()
   const [err, setErr] = useState<string | null>(null)
+  const [menuMsg, setMenuMsg] = useState<string | null>(null)
   const btnRef = useRef<HTMLButtonElement | null>(null)
+
+  // Auto-dismiss the boost toast so it does not linger.
+  useEffect(() => {
+    if (!menuMsg) return
+    const t = setTimeout(() => setMenuMsg(null), 2500)
+    return () => clearTimeout(t)
+  }, [menuMsg])
   const [pos, setPos] = useState<{ top: number; right: number } | null>(null)
 
   // Anchor the dropdown under the dots, measured from the button's rect.
@@ -90,11 +99,17 @@ export function PostOwnerMenu({
             style={{ position: 'fixed', top: pos.top, right: pos.right }}
             className="z-[45] w-36 overflow-hidden rounded-xl border border-line bg-[var(--modal)] shadow-lg"
           >
+            <BoostPostMenuItem
+              postId={postId}
+              onDone={() => setOpen(false)}
+              onError={(m) => { setMenuMsg(m); setOpen(false) }}
+              onInfo={(m) => { setMenuMsg(m); setOpen(false) }}
+            />
             <button
               type="button"
               role="menuitem"
               onClick={() => { setOpen(false); setTimeout(() => setEditing(true), 0) }}
-              className="block w-full px-3 py-2 text-left text-[13px] text-ink hover:bg-surface-sunken"
+              className="block w-full border-t border-line px-3 py-2 text-left text-[13px] text-ink hover:bg-surface-sunken"
             >
               Edit
             </button>
@@ -105,6 +120,18 @@ export function PostOwnerMenu({
               className="block w-full border-t border-line px-3 py-2 text-left text-[13px] text-rose-500 hover:bg-surface-sunken"
             >
               Delete
+            </button>
+          </div>,
+          document.body
+        )}
+
+      {menuMsg &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div className="fixed inset-x-4 bottom-24 z-[130] mx-auto max-w-sm rounded-xl bg-[var(--modal)] px-4 py-3 text-center text-[13px] text-ink shadow-lg">
+            {menuMsg}
+            <button type="button" onClick={() => setMenuMsg(null)} className="ml-2 font-semibold text-brand">
+              OK
             </button>
           </div>,
           document.body

@@ -230,17 +230,22 @@ function FilterRow({
   onClick: () => void
 }) {
   return (
-    <label
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={active}
+      onClick={onClick}
       className={`flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] transition-colors ${active ? 'bg-brand-light text-ink' : 'text-ink-muted hover:bg-surface-sunken hover:text-ink'}`}
     >
-      <input
-        type="checkbox"
-        checked={active}
-        onChange={onClick}
-        className="h-4 w-4 flex-shrink-0 cursor-pointer accent-[var(--brand-black)]"
-      />
+      <span
+        className={`flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-[4px] border ${
+          active ? 'border-[var(--brand-black)] bg-[var(--modal)]' : 'border-line bg-transparent'
+        }`}
+      >
+        {active && <CheckIcon className="h-3 w-3 text-[var(--brand-black)]" strokeWidth={3} />}
+      </span>
       {label}
-    </label>
+    </button>
   )
 }
 

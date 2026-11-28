@@ -147,6 +147,61 @@ export async function startBoost(
 }
 
 
+export async function togglePremiumBoostPost(workPostId: string) {
+  const user = await getCurrentUser()
+  if (!user) return { error: 'not_signed_in' as const }
+  if (user.role !== 'PROFESSIONAL') return { error: 'not_professional' as const }
+  if (!(await __isUserPremium(user.id))) return { error: 'premium_required' as const }
+
+  const now = new Date()
+  let boost = await prisma.boost.findFirst({
+    where: { userId: user.id, status: 'ACTIVE', startsAt: { lte: now }, expiresAt: { gt: now } },
+    select: { id: true, posts: { select: { workPostId: true } } },
+  })
+
+  // A premium user may not have an active boost row yet (e.g. they never saved
+  // a selection on the visibility page). Create an empty one so Boost works
+  // immediately from the post menu, mirroring setPremiumBoostPosts.
+  if (!boost) {
+    const until = (await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { premiumUntil: true },
+    }))!.premiumUntil!
+
+    boost = await prisma.boost.create({
+      data: {
+        userId: user.id,
+        amount: 0,
+        currency: 'USD',
+        creditsSpent: 0,
+        weight: 1,
+        days: Math.max(1, Math.ceil((until.getTime() - now.getTime()) / 864e5)),
+        startsAt: now,
+        expiresAt: until,
+        status: 'ACTIVE',
+      },
+      select: { id: true, posts: { select: { workPostId: true } } },
+    })
+  }
+
+  const current = boost.posts.map((p) => p.workPostId)
+  const already = current.includes(workPostId)
+
+  if (already) {
+    // Unboost: remove this post from the active boost.
+    await prisma.boostPost.deleteMany({ where: { boostId: boost.id, workPostId } })
+  } else {
+    // Boost: enforce the slot cap before adding.
+    if (current.length >= PREMIUM_BOOST_SLOTS) {
+      return { error: 'slots_full' as const }
+    }
+    await prisma.boostPost.create({ data: { boostId: boost.id, workPostId } })
+  }
+
+  revalidatePath('/profile/visibility')
+  return { ok: true as const, boosted: !already }
+}
+
 export async function setPremiumBoostPosts(workPostIds: string[]) {
   const user = await getCurrentUser()
   if (!user) redirect('/auth/login')
